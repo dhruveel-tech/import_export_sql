@@ -41,7 +41,7 @@ class ArtifactGenerator:
         filepath = event_dir / filename
 
         segments = transcript_data.get("segments", []) if isinstance(transcript_data, dict) else []
-        print(is_single_segment)
+        
         # ---------------------------------------------------
         # CASE 1 → Merge into single segment
         # ---------------------------------------------------
@@ -82,7 +82,6 @@ class ArtifactGenerator:
         # Final output
         # ---------------------------------------------------
         output_data = {
-            "repoGuid": transcript_data.get("repo_guid"),
             "segments": cleaned_segments,
         }
 
@@ -311,7 +310,6 @@ class ArtifactGenerator:
 
         # keep repo_guid if needed
         output_data = {
-            "repoGuid": events_data.get("repo_guid"),
             "segments": cleaned_segments,
         }
 
@@ -595,7 +593,6 @@ class ArtifactGenerator:
 
         # keep repo_guid if needed
         output_data = {
-            "repoGuid": comments_data.get("repo_guid"),
             "segments": cleaned_segments,
         }
 

@@ -46,12 +46,12 @@ async def create_import(
         return job
 
     except ValueError as exc:
-        logger.warning(f"LLM import validation failed | error={str(exc)}")
+        logger.warning(f"LLM import validation failed : error={str(exc)}")
         raise HTTPException(status_code=400, detail=str(exc))
 
     except Exception as exc:
         logger.error(
-            f"Failed to create LLM import job | error={str(exc)} | traceback={traceback.format_exc()}"
+            f"Failed to create LLM import job : error={str(exc)} , traceback={traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail="Failed to create import job")
 
@@ -93,12 +93,12 @@ async def create_import(
         return job
 
     except ValueError as exc:
-        logger.warning(f"LLM import validation failed | error={str(exc)}")
+        logger.warning(f"LLM import validation failed : error={str(exc)}")
         raise HTTPException(status_code=400, detail=str(exc))
 
     except Exception as exc:
         logger.error(
-            f"Failed to create LLM import job | error={str(exc)} | traceback={traceback.format_exc()}"
+            f"Failed to create LLM import job : error={str(exc)} , traceback={traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail="Failed to create import job")
     
@@ -134,8 +134,8 @@ async def get_import_status(import_id: UUID):
 
     except Exception as exc:
         logger.error(
-            f"Failed to fetch LLM import status | import_id={import_id} | "
-            f"error={str(exc)} | traceback={traceback.format_exc()}"
+            f"Failed to fetch LLM import status : import_id={import_id} , "
+            f"error={str(exc)} , traceback={traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail="Failed to fetch import job status")
 
@@ -160,8 +160,8 @@ async def get_import(import_id: UUID):
 
     except Exception as exc:
         logger.error(
-            f"Failed to fetch LLM import job | import_id={import_id} | "
-            f"error={str(exc)} | traceback={traceback.format_exc()}"
+            f"Failed to fetch LLM import job : import_id={import_id} , "
+            f"error={str(exc)} , traceback={traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail="Failed to fetch import job")
     

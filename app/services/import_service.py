@@ -73,8 +73,8 @@ class ImportService:
                 await session.refresh(job)
 
             logger.info(
-                f"LLM import job created | import_id={job.import_id} | "
-                f"status={job.status} | validation_errors={len(validation_errors)}"
+                f"LLM import job created : import_id={job.import_id} , "
+                f"status={job.status} , validation_errors={len(validation_errors)}"
             )
 
             asset = json.loads(job.asset)
@@ -94,7 +94,7 @@ class ImportService:
             )
 
         except Exception as e:
-            logger.exception(f"Failed to create LLM import job | error={e}")
+            logger.exception(f"Failed to create LLM import job : error={e}")
             return None
 
     # ------------------------------------------------------------------
@@ -127,7 +127,7 @@ class ImportService:
                         value=h.confidenceScore,
                     ))
         except Exception as e:
-            logger.exception(f"Highlight validation failure | error={e}")
+            logger.exception(f"Highlight validation failure : error={e}")
             errors.append(ValidationError(
                 field="highlights",
                 message="Unexpected validation failure",
@@ -165,7 +165,7 @@ class ImportService:
                 )
 
         except Exception as e:
-            logger.exception(f"Failed to fetch LLM import job | id={import_id} | error={e}")
+            logger.exception(f"Failed to fetch LLM import job : id={import_id} , error={e}")
             return None
 
     # ------------------------------------------------------------------
@@ -189,7 +189,7 @@ class ImportService:
                 )
                 job = result.scalar_one_or_none()
                 if not job:
-                    logger.warning(f"LLM import job not found | id={import_id}")
+                    logger.warning(f"LLM import job not found : id={import_id}")
                     return
 
                 job.status = status.value
@@ -208,10 +208,10 @@ class ImportService:
 
                 await session.commit()
 
-            logger.info(f"LLM import job updated | id={import_id} | status={status}")
+            logger.info(f"LLM import job updated : id={import_id} , status={status}")
 
         except Exception as e:
-            logger.exception(f"Failed to update LLM import job | id={import_id} | error={e}")
+            logger.exception(f"Failed to update LLM import job : id={import_id} , error={e}")
 
     # ------------------------------------------------------------------
     # LIST IMPORT JOBS

@@ -256,7 +256,7 @@ class VideoSplitClient:
                 segments.append(segment)
             
             if not segments:
-                logger.warning(f"No segments found in MongoDB for repo_guid={repo_guid}")
+                logger.warning(f"No segments found in MongoDB for : repo_guid={repo_guid}")
                 return None
             
             # Sort by start time

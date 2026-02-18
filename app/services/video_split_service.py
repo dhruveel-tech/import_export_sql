@@ -48,7 +48,7 @@ class VideoSplitService:
             return self._to_response(job)
 
         except Exception as e:
-            logger.exception(f"Failed to create video split job | error={e}")
+            logger.exception(f"Failed to create video split job : error={e}")
             return None
 
     async def get_video_split_export_job(
@@ -72,7 +72,7 @@ class VideoSplitService:
                 return response
 
         except Exception as e:
-            logger.exception(f"Failed to fetch video split job split_job_id={split_job_id} | error={e}")
+            logger.exception(f"Failed to fetch video split job : split_job_id={split_job_id} , error={e}")
             return None
 
     async def get_video_split_export_jobs_by_repo(
@@ -90,7 +90,7 @@ class VideoSplitService:
                 return [self._to_response(job) for job in jobs]
 
         except Exception as e:
-            logger.exception(f"Failed to list video split jobs for repo_guid={repo_guid} | error={e}")
+            logger.exception(f"Failed to list video split jobs for : repo_guid={repo_guid} , error={e}")
             return []
 
     async def update_video_split_job_status(
@@ -107,7 +107,7 @@ class VideoSplitService:
                 )
                 job = result.scalar_one_or_none()
                 if not job:
-                    logger.warning(f"Video split job not found while updating split_job_id={split_job_id}")
+                    logger.warning(f"Video split job not found while updating : split_job_id={split_job_id}")
                     return
 
                 job.status = status.value
@@ -125,7 +125,7 @@ class VideoSplitService:
             logger.info(f"Video split job status updated: split_job_id={split_job_id}, status={status}")
 
         except Exception as e:
-            logger.exception(f"Failed to update video split job status split_job_id={split_job_id} | error={e}")
+            logger.exception(f"Failed to update video split job status : split_job_id={split_job_id} | error={e}")
 
     async def save_video_split_manifest(
         self, split_job_id: UUID, manifest: ExportVideoSplitManifest

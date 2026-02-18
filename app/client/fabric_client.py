@@ -70,17 +70,17 @@ class FabricClient:
                 )
 
             if not segments:
-                logger.warning(f"No transcript segments found for repo_guid={repo_guid}")
+                logger.warning(f"No transcript segments found for : repo_guid={repo_guid}")
                 return None
 
             segments.sort(key=lambda x: x["start"])
 
-            logger.info(f"Transcript fetched successfully for repo_guid={repo_guid}, count={len(segments)}")
+            logger.info(f"Transcript fetched successfully for : repo_guid={repo_guid}, count={len(segments)}")
 
             return {"repo_guid": repo_guid, "segments": segments}
 
         except Exception as exc:
-            logger.error(f"Transcript fetch failed for repo_guid={repo_guid}, error={exc}", exc_info=True)
+            logger.error(f"Transcript fetch failed for : repo_guid={repo_guid}, error={exc}", exc_info=True)
             return {"repo_guid": repo_guid, "segments": []}
 
     async def get_events(self, repo_guid: str, inputs: Optional[Dict] = None) -> Dict:
@@ -113,12 +113,12 @@ class FabricClient:
 
             events.sort(key=lambda x: x["start"])
 
-            logger.info(f"Events fetched successfully for repo_guid={repo_guid}, count={len(events)}")
+            logger.info(f"Events fetched successfully for : repo_guid={repo_guid}, count={len(events)}")
 
             return {"repo_guid": repo_guid, "segments": events}
 
         except Exception as exc:
-            logger.error(f"Events fetch failed for repo_guid={repo_guid}, error={exc}", exc_info=True)
+            logger.error(f"Events fetch failed for : repo_guid={repo_guid}, error={exc}", exc_info=True)
             return {"repo_guid": repo_guid, "segments": []}
 
     async def get_comments(self, repo_guid: str, inputs: Optional[Dict] = None) -> Dict:
@@ -150,12 +150,12 @@ class FabricClient:
 
             comments.sort(key=lambda x: x["start"])
 
-            logger.info(f"Comments fetched successfully for repo_guid={repo_guid}, count={len(comments)}")
+            logger.info(f"Comments fetched successfully for : repo_guid={repo_guid}, count={len(comments)}")
 
             return {"repo_guid": repo_guid, "segments": comments}
 
         except Exception as exc:
-            logger.error(f"Comments fetch failed for repo_guid={repo_guid}, error={exc}", exc_info=True)
+            logger.error(f"Comments fetch failed for : repo_guid={repo_guid}, error={exc}", exc_info=True)
             return {"repo_guid": repo_guid, "segments": []}
 
     # ------------------------------------------------------------------
@@ -226,11 +226,11 @@ class FabricClient:
                     else:
                         skipped_count += len(custom_events)
                         logger.error(
-                            "Node API failure :- status=%s | body=%s",
+                            "Node API failure :- status=%s , body=%s",
                             response.status_code,
                             response.text,
                         )
-                        statu_msg = f"Node API failure : status={response.status_code} | body={response.text}"
+                        statu_msg = f"Node API failure : status={response.status_code} , body={response.text}"
 
                 except httpx.HTTPError as e:
                     skipped_count += len(custom_events)
@@ -238,7 +238,7 @@ class FabricClient:
                     logger.exception(f"HTTP error during Node API call: {e}")
 
         logger.info(
-            "LLM highlights sent to Node API : created=%s | skipped=%s",
+            "LLM highlights sent to Node API : created=%s , skipped=%s",
             created_count,
             skipped_count,
         )
