@@ -12,7 +12,7 @@ This is a simplified version of AI Spark API that removes Celery and Redis depen
 
 ### New Architecture
 - ✅ FastAPI `BackgroundTasks` for async processing
-- ✅ Simplified deployment (single API container + MongoDB)
+- ✅ Simplified deployment (single API container + SQL)
 - ✅ No external message broker required
 - ✅ Easier development and debugging
 
@@ -30,7 +30,7 @@ This is a simplified version of AI Spark API that removes Celery and Redis depen
          │
          ▼
     ┌─────────┐
-    │ MongoDB │
+    │ SQL │
     └─────────┘
 ```
 
@@ -38,7 +38,7 @@ This is a simplified version of AI Spark API that removes Celery and Redis depen
 
 ### Prerequisites
 - Python 3.10+
-- MongoDB
+- SQL
 - Docker & Docker Compose (optional)
 
 ### Installation
@@ -72,7 +72,7 @@ docker-compose up -d
 
 Or run locally:
 ```bash
-# Make sure MongoDB is running
+# Make sure SQL is running
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -136,7 +136,7 @@ Background tasks run in the same process but don't block the response. They're s
 1. **Process Restart**: Background tasks are lost if the API server restarts
 2. **Scalability**: Limited by single server resources
 3. **Monitoring**: Less sophisticated than Celery's monitoring tools
-4. **Job Status**: Stored in MongoDB, can be queried anytime
+4. **Job Status**: Stored in SQL, can be queried anytime
 
 ## Project Structure
 
@@ -172,9 +172,9 @@ ai-spark-api-no-celery/
 Key environment variables (see `.env.example` for full list):
 
 ```bash
-# MongoDB
-MONGODB_URL=mongodb://localhost:27017
-MONGODB_DB_NAME=ai_spark_db
+# SQL
+SQL_URL=SQL://localhost:27017
+SQL_DB_NAME=ai_spark_db
 
 # Storage
 EXPORT_BASE_PATH=/var/spark/exports
@@ -207,13 +207,13 @@ isort app/
 Since background tasks run in the same process, debugging is straightforward:
 - Use breakpoints in your IDE
 - Check logs with `structlog` output
-- Monitor job status in MongoDB
+- Monitor job status in SQL
 
 ## Migration from Celery Version
 
 If migrating from the Celery version:
 
-1. **Database**: Same MongoDB schema, no migration needed
+1. **Database**: Same SQL schema, no migration needed
 2. **API**: Same endpoints and responses
 3. **Configuration**: Remove Redis/Celery settings from `.env`
 4. **Deployment**: Remove Redis and Celery containers
@@ -224,13 +224,13 @@ If migrating from the Celery version:
 Monitor background tasks through:
 1. **Job Status API**: Check job status via API endpoints
 2. **Application Logs**: Structured logs via `structlog`
-3. **MongoDB**: Query job documents directly
+3. **SQL**: Query job documents directly
 4. **Health Endpoint**: Check overall system health
 
 ## Docker Deployment
 
 The docker-compose setup includes:
-- MongoDB with persistent storage
+- SQL with persistent storage
 - FastAPI application with volume mounts
 - Health checks for both services
 
@@ -252,7 +252,7 @@ docker-compose down -v
 
 ### Common Issues
 
-1. **Jobs not processing**: Check MongoDB connection and logs
+1. **Jobs not processing**: Check SQL connection and logs
 2. **Slow performance**: Consider scaling horizontally or reverting to Celery
 3. **Memory issues**: Monitor application memory usage, adjust worker count
 
