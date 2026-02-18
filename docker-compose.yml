@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-spark-api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./exports:/var/spark/exports
+      - ./imports:/var/spark/imports
+      - sqlite_data:/var/spark/db
+    environment:
+      - SQLITE_DB_PATH=/var/spark/db/ai_spark.db
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  sqlite_data:
