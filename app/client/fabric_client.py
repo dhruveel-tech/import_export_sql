@@ -178,7 +178,7 @@ class FabricClient:
         if not highlights:
             return {"created": 0, "updated": 0, "skipped": 0, "total": 0}
 
-        url = f"{settings.FABRIC_API_URL}/catalogs/aiEnrichedMetadata/customTimelineEvent/llm/add"
+        url = f"{settings.FABRIC_API_URL}/catalogs/aiEnrichedMetadata/insights/llm/add"
         file_name = full_path.split("/")[-1] if full_path else ""
         headers = {"apiKey": settings.FABRIC_API_KEY}
 
@@ -193,7 +193,7 @@ class FabricClient:
                     try:
                         custom_events.append(
                             {
-                                "comment": h.get("comment", ""),
+                                "insight": h.get("insight", ""),
                                 "start": h.get("start", ""),
                                 "end": h.get("end", ""),
                                 "confidenceScore": h.get("confidenceScore", 0),
@@ -215,7 +215,7 @@ class FabricClient:
                     "repoGuid": repo_guid,
                     "fullPath": full_path,
                     "fileName": file_name,
-                    "customEvents": custom_events,
+                    "insightEvents": custom_events,
                 }
                 try:
                     response = await client.post(url, json=node_payload, headers=headers)

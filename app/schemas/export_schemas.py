@@ -22,48 +22,9 @@ class OutputFormats(BaseModel):
                 raise ValueError(f"Invalid format: {fmt}. Allowed: {allowed}")
         return v
 
-
-class SelectsConfig(BaseModel):
-    """Selects/assembly configuration."""
-    enabled: bool = False
-    formats: List[str] = Field(default=["edl", "fcpxml"])
-
-    @field_validator("formats")
-    @classmethod
-    def validate_formats(cls, v: List[str]) -> List[str]:
-        allowed = {"edl", "fcpxml"}
-        for fmt in v:
-            if fmt not in allowed:
-                raise ValueError(f"Invalid selects format: {fmt}. Allowed: {allowed}")
-        return v
-
-
 class GroundingConfig(BaseModel):
     """Grounding prompt configuration."""
     enabled: bool = True
-
-
-class SubclipsConfig(BaseModel):
-    """Subclips configuration."""
-    enabled: bool = True
-    source: List[str] = Field(default=["comments", "markers"])
-    handle_seconds: int = Field(default=2, ge=0, le=30)
-
-    @field_validator("source")
-    @classmethod
-    def validate_source(cls, v: List[str]) -> List[str]:
-        allowed = {"comments", "markers"}
-        for src in v:
-            if src not in allowed:
-                raise ValueError(f"Invalid subclip source: {src}. Allowed: {allowed}")
-        return v
-
-
-class MediaConfig(BaseModel):
-    """Media export configuration."""
-    include_full_proxy: bool = False
-    subclips: SubclipsConfig = Field(default_factory=SubclipsConfig)
-
 
 class ExportInputs(BaseModel):
     """Export input data selection."""
@@ -80,7 +41,6 @@ class ExportOutputs(BaseModel):
     events: Optional[OutputFormats] = None
     comments: Optional[OutputFormats] = None
     markers: Optional[OutputFormats] = None
-    selects: SelectsConfig = Field(default_factory=SelectsConfig)
     grounding: GroundingConfig = Field(default_factory=GroundingConfig)
 
 
@@ -99,7 +59,6 @@ class ExportWorkOrderCreate(BaseModel):
     inputs: ExportInputs = Field(default_factory=ExportInputs)
     user_inputs: UserInputs = Field(default_factory=UserInputs)
     outputs: ExportOutputs = Field(default_factory=ExportOutputs)
-    media: MediaConfig = Field(default_factory=MediaConfig)
     metadata: ExportMetadata = Field(default_factory=ExportMetadata)
 
 

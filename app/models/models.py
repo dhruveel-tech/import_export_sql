@@ -212,7 +212,7 @@ class ImportHighlight(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     import_id = Column(String, index=True, nullable=False)
-    comment = Column(Text, nullable=False)
+    insight = Column(Text, nullable=False)
     start = Column(Float, nullable=False)
     end = Column(Float, nullable=False)
     confidence_score = Column(Integer, nullable=False)
@@ -225,7 +225,7 @@ class ImportHighlight(Base):
     def to_dict(self):
         return {
             "import_id": self.import_id,
-            "comment": self.comment,
+            "insight": self.insight,
             "start": self.start,
             "end": self.end,
             "confidenceScore": self.confidence_score,

@@ -61,7 +61,7 @@ class ImportService:
                     h_obj = h if isinstance(h, Highlight) else Highlight(**h)
                     highlight = ImportHighlight(
                         import_id=import_id,
-                        comment=h_obj.comment,
+                        insight=h_obj.insight,
                         start=h_obj.start,
                         end=h_obj.end,
                         confidence_score=h_obj.confidenceScore if h_obj.confidenceScore is not None else 0,

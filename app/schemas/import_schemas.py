@@ -22,7 +22,7 @@ class Evidence(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 class Highlight(BaseModel):
-    comment: str
+    insight: str
     start: float
     end: float
     confidenceScore: Optional[float] = Field(default=None, ge=0, le=100)
@@ -42,19 +42,6 @@ class Asset(BaseModel):
     fullPath: str
 
     model_config = ConfigDict(extra="forbid")
-
-class EventDetails(BaseModel):
-    eventIds: List[str] = Field(default_factory=list)
-
-class CustomTimelineEvent(BaseModel):
-    repo_guid: str
-    fullPath: str
-    fileName: str
-    comment: str
-    start: float
-    end: float
-    confidenceScore: int
-    eventDetails: EventDetails
 
 class ImportWorkOrder(BaseModel):
     schemaVersion: Literal["sdna.spark.import.v1"]
