@@ -37,7 +37,7 @@ async def create_export(
         job = await service.create_export_job(work_order)
         print(f" -----> job : {job}")
         # Queue background export processing
-        background_tasks.add_task(process_export_background, str(job.spark_id))
+        background_tasks.add_task(process_export_background, str(job.export_id))
 
         return job
 
@@ -55,21 +55,21 @@ async def create_export(
         )
 
 
-@router.get("/{spark_id}/status", response_model=ExportJobStatusResponse)
-async def get_export_status(spark_id: UUID):
+@router.get("/{export_id}/status", response_model=ExportJobStatusResponse)
+async def get_export_status(export_id: UUID):
     """
     Get current export job status and timestamps.
     """
     service = ExportService()
 
     try:
-        job = await service.get_export_job(spark_id)
+        job = await service.get_export_job(export_id)
 
         if not job:
-            raise HTTPException(status_code=404, detail=f"Export job not found: {spark_id}")
+            raise HTTPException(status_code=404, detail=f"Export job not found: {export_id}")
 
         return ExportJobStatusResponse(
-            spark_id=job.spark_id,
+            export_id=job.export_id,
             status=job.status,
             created_at=job.created_at,
             started_at=job.started_at,
@@ -82,7 +82,7 @@ async def get_export_status(spark_id: UUID):
 
     except Exception as exc:
         logger.error(
-            f"Failed to fetch export job status : spark_id={str(spark_id)} , error={str(exc)} , traceback={traceback.format_exc()}"
+            f"Failed to fetch export job status : export_id={str(export_id)} , error={str(exc)} , traceback={traceback.format_exc()}"
         )
         raise HTTPException(
             status_code=500,
@@ -90,24 +90,24 @@ async def get_export_status(spark_id: UUID):
         )
 
 
-@router.get("/{spark_id}", response_model=ExportJobResponse)
-async def get_export(spark_id: UUID):
+@router.get("/{export_id}", response_model=ExportJobResponse)
+async def get_export(export_id: UUID):
     """
     Get full export job details including manifest and artifact URLs.
     """
     service = ExportService()
 
     try:
-        job = await service.get_export_job(spark_id)
+        job = await service.get_export_job(export_id)
 
         if not job:
-            raise HTTPException(status_code=404, detail=f"Export job not found: {spark_id}")
+            raise HTTPException(status_code=404, detail=f"Export job not found: {export_id}")
 
         return job
 
     except Exception as exc:
         logger.error(
-            f"Failed to fetch export job : spark_id={str(spark_id)} , error={str(exc)} , traceback={traceback.format_exc()}",
+            f"Failed to fetch export job : export_id={str(export_id)} , error={str(exc)} , traceback={traceback.format_exc()}",
         )
         raise HTTPException(
             status_code=500,
@@ -142,23 +142,23 @@ async def list_exports(
             detail="Failed to list export jobs",
         )
 
-@router.get("/llm_instruct_file/{spark_id}", response_model=GetLLmPromptResponse)
+@router.get("/llm_instruct_file/{export_id}", response_model=GetLLmPromptResponse)
 async def get_llm_instruct_file(
-    spark_id: UUID
+    export_id: UUID
 ):
     service = ExportService()
 
     try:
-        response = await service.get_llm_prompt(spark_id)
+        response = await service.get_llm_prompt(export_id)
 
         if not response:
-            raise HTTPException(status_code=404, detail=f"LLm Instruct File not found: {spark_id}")
+            raise HTTPException(status_code=404, detail=f"LLm Instruct File not found: {export_id}")
 
         return response
 
     except Exception as exc:
         logger.error(
-            f"Failed to fetch LLm Instruct File : spark_id={str(spark_id)} , error={str(exc)} , traceback={traceback.format_exc()}",
+            f"Failed to fetch LLm Instruct File : export_id={str(export_id)} , error={str(exc)} , traceback={traceback.format_exc()}",
         )
         raise HTTPException(
             status_code=500,
@@ -172,16 +172,16 @@ async def update_llm_instruct_file(
     service = ExportService()
 
     try:
-        response = await service.update_llm_prompt(data.spark_id, data.prompt)
+        response = await service.update_llm_prompt(data.export_id, data.prompt)
 
         if not response:
-            raise HTTPException(status_code=404, detail=f"LLm Instruct File not found: {data.spark_id}")
+            raise HTTPException(status_code=404, detail=f"LLm Instruct File not found: {data.export_id}")
 
         return response
 
     except Exception as exc:
         logger.error(
-            f"Failed to fetch LLm Instruct File : spark_id={str(data.spark_id)} , error={str(exc)} , traceback={traceback.format_exc()}",
+            f"Failed to fetch LLm Instruct File : export_id={str(data.export_id)} , error={str(exc)} , traceback={traceback.format_exc()}",
         )
         raise HTTPException(
             status_code=500,

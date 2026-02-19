@@ -47,7 +47,7 @@ class ExportService:
 
             async with AsyncSessionLocal() as session:
                 job = ExportJob(
-                    spark_id=str(uuid4()),
+                    export_id=str(uuid4()),
                     repo_guid=work_order.repo_guid,
                     export_mode=work_order.metadata.export_mode,
                     export_preset=work_order.metadata.export_preset,
@@ -59,7 +59,7 @@ class ExportService:
                 await session.commit()
                 await session.refresh(job)
 
-            logger.info(f"Export job created : spark_id={job.spark_id} , status={job.status}")
+            logger.info(f"Export job created : export_id={job.export_id} , status={job.status}")
             return self._to_response(job)
 
         except Exception as exc:
@@ -83,11 +83,11 @@ class ExportService:
     # ------------------------------------------------------------------
     # GET SINGLE EXPORT JOB
     # ------------------------------------------------------------------
-    async def get_export_job(self, spark_id: UUID) -> Optional[ExportJobResponse]:
+    async def get_export_job(self, export_id: UUID) -> Optional[ExportJobResponse]:
         try:
             async with AsyncSessionLocal() as session:
                 result = await session.execute(
-                    select(ExportJob).where(ExportJob.spark_id == str(spark_id))
+                    select(ExportJob).where(ExportJob.export_id == str(export_id))
                 )
                 job = result.scalar_one_or_none()
                 if not job:
@@ -102,7 +102,7 @@ class ExportService:
                 return response
 
         except Exception as exc:
-            logger.error(f"Failed to fetch export job : spark_id={spark_id} , error={exc}", exc_info=True)
+            logger.error(f"Failed to fetch export job : export_id={export_id} , error={exc}", exc_info=True)
             return None
 
     # ------------------------------------------------------------------
@@ -131,7 +131,7 @@ class ExportService:
     # ------------------------------------------------------------------
     async def update_job_status(
         self,
-        spark_id: UUID,
+        export_id: UUID,
         status: JobStatus,
         error_message: Optional[str] = None,
         error_details: Optional[dict] = None,
@@ -139,11 +139,11 @@ class ExportService:
         try:
             async with AsyncSessionLocal() as session:
                 result = await session.execute(
-                    select(ExportJob).where(ExportJob.spark_id == str(spark_id))
+                    select(ExportJob).where(ExportJob.export_id == str(export_id))
                 )
                 job = result.scalar_one_or_none()
                 if not job:
-                    logger.error(f"Export job not found : spark_id={spark_id}")
+                    logger.error(f"Export job not found : export_id={export_id}")
                     return False
 
                 job.status = status.value
@@ -158,36 +158,36 @@ class ExportService:
 
                 await session.commit()
 
-            logger.info(f"Export job status updated : spark_id={spark_id} , status={status}")
+            logger.info(f"Export job status updated : export_id={export_id} , status={status}")
             return True
 
         except Exception as exc:
-            logger.error(f"Failed to update job status : spark_id={spark_id} , error={exc}", exc_info=True)
+            logger.error(f"Failed to update job status : export_id={export_id} , error={exc}", exc_info=True)
             return False
 
     # ------------------------------------------------------------------
     # SAVE MANIFEST
     # ------------------------------------------------------------------
-    async def save_manifest(self, spark_id: UUID, manifest: ExportManifest) -> bool:
+    async def save_manifest(self, export_id: UUID, manifest: ExportManifest) -> bool:
         try:
             async with AsyncSessionLocal() as session:
                 result = await session.execute(
-                    select(ExportJob).where(ExportJob.spark_id == str(spark_id))
+                    select(ExportJob).where(ExportJob.export_id == str(export_id))
                 )
                 job = result.scalar_one_or_none()
                 if not job:
-                    logger.error(f"Export job not found for manifest : spark_id={spark_id}")
+                    logger.error(f"Export job not found for manifest : export_id={export_id}")
                     return False
 
                 job.manifest = json.dumps(manifest.model_dump(mode="json"))
                 job.updated_at = datetime.utcnow()
                 await session.commit()
 
-            logger.info(f"Export manifest saved : spark_id={spark_id}")
+            logger.info(f"Export manifest saved : export_id={export_id}")
             return True
 
         except Exception as exc:
-            logger.error(f"Failed to save export manifest : spark_id={spark_id} , error={exc}", exc_info=True)
+            logger.error(f"Failed to save export manifest : export_id={export_id} , error={exc}", exc_info=True)
             return False
 
     # ------------------------------------------------------------------
@@ -234,7 +234,7 @@ class ExportService:
                 f.write(prompt)
 
             return UpdateLLmPromptResponse(
-                spark_id=export_job_id,
+                export_id=export_job_id,
                 status="success",
                 file_path=str(llm_prompt_file_path),
                 error_message=None,
@@ -243,7 +243,7 @@ class ExportService:
         except Exception as e:
             logger.error(f"Failed to update LLM prompt for {export_job_id}: {e}")
             return UpdateLLmPromptResponse(
-                spark_id=export_job_id,
+                export_id=export_job_id,
                 status="failed",
                 file_path=str(llm_prompt_file_path),
                 error_message=str(e),
@@ -261,7 +261,7 @@ class ExportService:
                     f.write("")
 
             return GetLLmPromptResponse(
-                spark_id=export_job_id,
+                export_id=export_job_id,
                 status="success",
                 file_path=str(llm_prompt_file_path),
                 error_message=None,
@@ -270,7 +270,7 @@ class ExportService:
         except Exception as e:
             logger.error(f"Failed to fetch LLM instruct file for {export_job_id}: {e}")
             return GetLLmPromptResponse(
-                spark_id=export_job_id,
+                export_id=export_job_id,
                 status="failed",
                 file_path=str(llm_prompt_file_path),
                 error_message=str(e),
@@ -282,7 +282,7 @@ class ExportService:
     @staticmethod
     def _to_response(job: ExportJob) -> ExportJobResponse:
         return ExportJobResponse.model_validate({
-            "spark_id": job.spark_id,
+            "export_id": job.export_id,
             "repo_guid": job.repo_guid,
             "export_mode": job.export_mode,
             "export_preset": job.export_preset,

@@ -19,10 +19,10 @@ FPS = 25  # change if needed
 class ArtifactGenerator:
     """Generates export artifacts in various formats."""
 
-    def __init__(self, spark_id: UUID, work_order: Dict[str, Any]):
-        self.spark_id = spark_id
+    def __init__(self, export_id: UUID, work_order: Dict[str, Any]):
+        self.export_id = export_id
         self.work_order = work_order
-        self.export_dir = Path(settings.EXPORT_BASE_PATH) / str(spark_id)
+        self.export_dir = Path(settings.EXPORT_BASE_PATH) / str(export_id)
         self.export_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_transcript_json(self, transcript_data: Dict, is_single_segment: bool) -> Path:

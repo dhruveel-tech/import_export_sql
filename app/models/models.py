@@ -72,7 +72,7 @@ class ExportJob(Base):
     __tablename__ = "export_jobs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    spark_id = Column(String, unique=True, index=True, default=lambda: str(uuid4()))
+    export_id = Column(String, unique=True, index=True, default=lambda: str(uuid4()))
     repo_guid = Column(String, index=True, nullable=False)
     export_mode = Column(String, default=ExportMode.EDITORIAL.value)
     export_preset = Column(String, nullable=True)
@@ -102,7 +102,7 @@ class ExportJob(Base):
 
     def to_dict(self):
         return {
-            "spark_id": self.spark_id,
+            "export_id": self.export_id,
             "repo_guid": self.repo_guid,
             "export_mode": self.export_mode,
             "export_preset": self.export_preset,

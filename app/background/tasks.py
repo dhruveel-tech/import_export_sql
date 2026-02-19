@@ -41,9 +41,9 @@ async def _ensure_db():
 # EXPORT
 # ---------------------------------------------------------------------------
 
-async def process_export_background(spark_id: str):
+async def process_export_background(export_id: str):
     """Process export job in background without crashing server."""
-    logger.info(f"Starting export processing : spark_id={spark_id}")
+    logger.info(f"Starting export processing : export_id={export_id}")
 
     fabric_client = None
     job = None
@@ -53,18 +53,18 @@ async def process_export_background(spark_id: str):
 
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(ExportJob).where(ExportJob.spark_id == spark_id)
+                select(ExportJob).where(ExportJob.export_id == export_id)
             )
             job = result.scalar_one_or_none()
 
         if not job:
-            logger.error(f"Export job not found : spark_id={spark_id}")
+            logger.error(f"Export job not found : export_id={export_id}")
             return
 
         # Update status to processing
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(ExportJob).where(ExportJob.spark_id == spark_id)
+                select(ExportJob).where(ExportJob.export_id == export_id)
             )
             job = result.scalar_one_or_none()
             job.status = JobStatus.PROCESSING.value
@@ -75,7 +75,7 @@ async def process_export_background(spark_id: str):
         repo_guid = work_order["repo_guid"]
 
         fabric_client = FabricClient()
-        generator = ArtifactGenerator(UUID(spark_id), work_order)
+        generator = ArtifactGenerator(UUID(export_id), work_order)
 
         artifacts = []
         outputs = work_order.get("outputs", {})
@@ -93,7 +93,7 @@ async def process_export_background(spark_id: str):
                     filepath, status_msg = _generate_transcript_artifact(generator, transcript_data, fmt, is_single_segment)
                     if status_msg != "Success":
                         error_msg.append(status_msg)
-                    artifacts.append(_create_artifact_record(filepath, "transcript", fmt, spark_id))
+                    artifacts.append(_create_artifact_record(filepath, "transcript", fmt, export_id))
 
         # EVENTS
         if outputs.get("events"):
@@ -103,7 +103,7 @@ async def process_export_background(spark_id: str):
                 if status_msg != "Success":
                     error_msg.append(status_msg)
                 if filepath:
-                    artifacts.append(_create_artifact_record(filepath, "events", fmt, spark_id))
+                    artifacts.append(_create_artifact_record(filepath, "events", fmt, export_id))
 
         # COMMENTS
         comments_data = None
@@ -114,7 +114,7 @@ async def process_export_background(spark_id: str):
                 if status_msg != "Success":
                     error_msg.append(status_msg)
                 if filepath:
-                    artifacts.append(_create_artifact_record(filepath, "comments", fmt, spark_id))
+                    artifacts.append(_create_artifact_record(filepath, "comments", fmt, export_id))
 
         # SELECTS
         if outputs.get("selects", {}).get("enabled"):
@@ -122,25 +122,25 @@ async def process_export_background(spark_id: str):
             for fmt in outputs["selects"]["formats"]:
                 if fmt == "edl":
                     filepath = generator.generate_selects_edl(selects_data)
-                    artifacts.append(_create_artifact_record(filepath, "selects", fmt, spark_id))
+                    artifacts.append(_create_artifact_record(filepath, "selects", fmt, export_id))
 
         # GROUNDING
         if outputs.get("grounding", {}).get("enabled"):
             filepath, status_msg = generator.generate_grounding_prompt(user_prompt)
             if status_msg != "Success":
                 error_msg.append(status_msg)
-            artifacts.append(_create_artifact_record(filepath, "grounding", "txt", spark_id))
+            artifacts.append(_create_artifact_record(filepath, "grounding", "txt", export_id))
 
         # LLM INSTRUCTIONS
         if llm_instructions:
             llm_prompt_path, status_msg = generator.generate_llm_instructions()
             if status_msg != "Success":
                 error_msg.append(status_msg)
-            artifacts.append(_create_artifact_record(llm_prompt_path, "llm_instruct", "md", spark_id))
+            artifacts.append(_create_artifact_record(llm_prompt_path, "llm_instruct", "md", export_id))
 
         # MANIFEST
         manifest = ExportManifest(
-            spark_id=UUID(spark_id),
+            export_id=UUID(export_id),
             repo_guid=repo_guid,
             status="completed",
             created_at=job.created_at,
@@ -149,7 +149,7 @@ async def process_export_background(spark_id: str):
 
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(ExportJob).where(ExportJob.spark_id == spark_id)
+                select(ExportJob).where(ExportJob.export_id == export_id)
             )
             job = result.scalar_one_or_none()
             job.manifest = json.dumps(manifest.model_dump(mode="json"))
@@ -158,16 +158,16 @@ async def process_export_background(spark_id: str):
             job.export_path = str(generator.export_dir)
             await session.commit()
 
-        logger.info(f"Export processing completed : spark_id={spark_id} , artifacts_count={len(artifacts)}")
+        logger.info(f"Export processing completed : export_id={export_id} , artifacts_count={len(artifacts)}")
         logger.info("***************************************************************************************************************************")
 
     except Exception as exc:
-        logger.error(f"Export processing failed : spark_id={spark_id} , error={str(exc)} , traceback={traceback.format_exc()}")
+        logger.error(f"Export processing failed : export_id={export_id} , error={str(exc)} , traceback={traceback.format_exc()}")
         if job:
             try:
                 async with AsyncSessionLocal() as session:
                     result = await session.execute(
-                        select(ExportJob).where(ExportJob.spark_id == spark_id)
+                        select(ExportJob).where(ExportJob.export_id == export_id)
                     )
                     job = result.scalar_one_or_none()
                     if job:
@@ -177,7 +177,7 @@ async def process_export_background(spark_id: str):
                         job.completed_at = datetime.utcnow()
                         await session.commit()
             except Exception as update_exc:
-                logger.error(f"Failed to update job status : spark_id={spark_id}, error={str(update_exc)}")
+                logger.error(f"Failed to update job status : export_id={export_id}, error={str(update_exc)}")
 
     finally:
         if fabric_client:
@@ -555,15 +555,15 @@ def _create_selects_from_comments_markers(comments):
         return []
 
 
-def _create_artifact_record(filepath, artifact_type, fmt, spark_id):
+def _create_artifact_record(filepath, artifact_type, fmt, export_id):
     try:
         if not filepath:
-            logger.error(f"Artifact filepath is missing : artifact_type={artifact_type} , format={fmt} , spark_id={spark_id}")
+            logger.error(f"Artifact filepath is missing : artifact_type={artifact_type} , format={fmt} , export_id={export_id}")
             return None
 
         filepath = Path(filepath)
         filename = filepath.name
-        url = f"{settings.FABRIC_API_URL}/{spark_id}/{filename}"
+        url = f"{settings.FABRIC_API_URL}/{export_id}/{filename}"
 
         try:
             file_size = filepath.stat().st_size if filepath.exists() else 0
@@ -580,5 +580,5 @@ def _create_artifact_record(filepath, artifact_type, fmt, spark_id):
         }
 
     except Exception as exc:
-        logger.error(f"Failed to create artifact record : artifact_type={artifact_type} , format={fmt} , spark_id={spark_id} , error={str(exc)}")
+        logger.error(f"Failed to create artifact record : artifact_type={artifact_type} , format={fmt} , export_id={export_id} , error={str(exc)}")
         return None

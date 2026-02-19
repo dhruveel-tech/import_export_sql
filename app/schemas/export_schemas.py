@@ -117,7 +117,7 @@ class ArtifactResponse(BaseModel):
 
 class ExportManifest(BaseModel):
     """Export package manifest."""
-    spark_id: UUID
+    export_id: UUID
     repo_guid: str
     status: str
     created_at: datetime
@@ -126,7 +126,7 @@ class ExportManifest(BaseModel):
 
 class ExportJobResponse(BaseModel):
     """Response schema for export job."""
-    spark_id: UUID
+    export_id: UUID
     repo_guid: str
     status: str
     export_mode: str
@@ -143,7 +143,7 @@ class ExportJobResponse(BaseModel):
 
 class ExportJobStatusResponse(BaseModel):
     """Response schema for export job status."""
-    spark_id: UUID
+    export_id: UUID
     status: str
     created_at: datetime
     started_at: Optional[datetime] = None
@@ -160,11 +160,11 @@ class ExportJobListResponse(BaseModel):
     jobs: List[ExportJobResponse]
 
 class UpdateLLmPrompt(BaseModel):
-    spark_id: UUID
+    export_id: UUID
     prompt: str = Field(..., min_length=1)
     
 class UpdateLLmPromptResponse(BaseModel):
-    spark_id: UUID
+    export_id: UUID
     status: str
     file_path: str
     error_message: Optional[str] = None
@@ -173,7 +173,7 @@ class UpdateLLmPromptResponse(BaseModel):
         from_attributes = True
         
 class GetLLmPromptResponse(BaseModel):
-    spark_id: UUID
+    export_id: UUID
     status: str
     file_path: str
     error_message: Optional[str] = None

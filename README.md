@@ -30,7 +30,7 @@ This is a simplified version of AI Spark API that removes Celery and Redis depen
          │
          ▼
     ┌─────────┐
-    │ SQL │
+    │   SQL   │
     └─────────┘
 ```
 
@@ -80,8 +80,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ### Export Operations
 - `POST /spark` - Create export job
-- `GET /spark/{spark_id}` - Get export details
-- `GET /spark/{spark_id}/status` - Get export status
+- `GET /spark/{export_id}` - Get export details
+- `GET /spark/{export_id}/status` - Get export status
 - `GET /spark?repo_guid={id}` - List exports by repo
 
 ### Import Operations
@@ -107,7 +107,7 @@ async def create_export(
     job = await service.create_export_job(work_order)
     
     # Add task to background queue
-    background_tasks.add_task(process_export_background, str(job.spark_id))
+    background_tasks.add_task(process_export_background, str(job.export_id))
     
     return job
 ```
