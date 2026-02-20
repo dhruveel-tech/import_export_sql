@@ -121,22 +121,22 @@ class FabricClient:
             logger.error(f"Events fetch failed for : repo_guid={repo_guid}, error={exc}", exc_info=True)
             return {"repo_guid": repo_guid, "segments": []}
 
-    async def get_comments(self, repo_guid: str, inputs: Optional[Dict] = None) -> Dict:
+    async def get_insights(self, repo_guid: str, inputs: Optional[Dict] = None) -> Dict:
         try:
             col = self._collection(settings.MONGODB_COLLECTION_NAME_FOR_GET_DATA)
 
             ids = inputs.get("event_ids", []) if inputs else []
 
-            query: Dict[str, Any] = {"sdnaEventType": "comment"}
+            query: Dict[str, Any] = {"sdnaEventType": "insights"}
 
             if ids:
                 query["_id"] = {"$in": [self._to_object_id(i) for i in ids]}
 
             cursor = col.find(query)
 
-            comments: List[Dict] = []
+            insights: List[Dict] = []
             async for item in cursor:
-                comments.append(
+                insights.append(
                     {
                         "id": str(item["_id"]),
                         "sdnaEventType": item.get("sdnaEventType", ""),
@@ -148,14 +148,14 @@ class FabricClient:
                     }
                 )
 
-            comments.sort(key=lambda x: x["start"])
+            insights.sort(key=lambda x: x["start"])
 
-            logger.info(f"Comments fetched successfully for : repo_guid={repo_guid}, count={len(comments)}")
+            logger.info(f"Insights fetched successfully for : repo_guid={repo_guid}, count={len(insights)}")
 
-            return {"repo_guid": repo_guid, "segments": comments}
+            return {"repo_guid": repo_guid, "segments": insights}
 
         except Exception as exc:
-            logger.error(f"Comments fetch failed for : repo_guid={repo_guid}, error={exc}", exc_info=True)
+            logger.error(f"Insights fetch failed for : repo_guid={repo_guid}, error={exc}", exc_info=True)
             return {"repo_guid": repo_guid, "segments": []}
 
     # ------------------------------------------------------------------

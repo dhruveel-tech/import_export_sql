@@ -88,6 +88,7 @@ class ExportJobResponse(BaseModel):
     export_id: UUID
     repo_guid: str
     status: str
+    zip_file_path: Optional[str] = None
     export_mode: str
     export_preset: Optional[str]
     created_at: datetime

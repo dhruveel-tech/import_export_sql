@@ -78,6 +78,7 @@ class ExportJob(Base):
     export_preset = Column(String, nullable=True)
     work_order = Column(Text, nullable=False)          # JSON
     status = Column(String, index=True, default=JobStatus.PENDING.value)
+    zip_file_path = Column(String, nullable=True)
     requested_by = Column(String, nullable=True)
     export_path = Column(String, nullable=True)
     manifest = Column(Text, nullable=True)             # JSON
@@ -108,6 +109,7 @@ class ExportJob(Base):
             "export_preset": self.export_preset,
             "work_order": _from_json(self.work_order),
             "status": self.status,
+            "zip_file_path": self.zip_file_path,
             "requested_by": self.requested_by,
             "export_path": self.export_path,
             "manifest": _from_json(self.manifest),

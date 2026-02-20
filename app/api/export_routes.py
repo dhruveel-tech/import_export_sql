@@ -89,7 +89,28 @@ async def get_export_status(export_id: UUID):
             detail="Failed to fetch export job status",
         )
 
+@router.post("/export/{export_id}/zip")
+def export_zip(export_id: str):
+    """
+    Create a zip file from exported folder and return zip path.
+    """
+    try:
+        service = ExportService()
+        
+        export_folder_path = f"./exports/{export_id}"
 
+        zip_path = service.create_zip_from_folder(export_folder_path)
+
+        return {
+            "status": "success",
+            "zip_path": zip_path
+        }
+
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @router.get("/{export_id}", response_model=ExportJobResponse)
 async def get_export(export_id: UUID):
     """

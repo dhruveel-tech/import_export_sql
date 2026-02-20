@@ -153,7 +153,7 @@ class ArtifactGenerator:
         return filepath
 
     def generate_transcript_fcpxml(self, transcript_data: Dict) -> Path:
-        """Generate FCPXML for comments (segments optional)."""
+        """Generate FCPXML for transcript (segments optional)."""
         segments: List[Dict] = transcript_data.get("segments", [])
         # ---------------------------------------------
         # Get optional video path
@@ -229,8 +229,8 @@ class ArtifactGenerator:
         # Library structure
         # -----------------------------------------------------
         library = ET.SubElement(fcpxml, "library")
-        event = ET.SubElement(library, "event", name="AI Comments Event")
-        project = ET.SubElement(event, "project", name="AI Comments Project")
+        event = ET.SubElement(library, "event", name="AI transcript Event")
+        project = ET.SubElement(event, "project", name="AI transcript Project")
 
         sequence = ET.SubElement(
             project,
@@ -352,7 +352,7 @@ class ArtifactGenerator:
         return filepath
 
     def generate_events_fcpxml(self, event_data: Dict) -> Path:
-        """Generate FCPXML for comments (segments optional)."""
+        """Generate FCPXML for Events (segments optional)."""
 
         segments: List[Dict] = event_data.get("segments", [])
 
@@ -430,8 +430,8 @@ class ArtifactGenerator:
         # Library structure
         # -----------------------------------------------------
         library = ET.SubElement(fcpxml, "library")
-        event = ET.SubElement(library, "event", name="AI Comments Event")
-        project = ET.SubElement(event, "project", name="AI Comments Project")
+        event = ET.SubElement(library, "event", name="AI Events Event")
+        project = ET.SubElement(event, "project", name="AI Events Project")
 
         sequence = ET.SubElement(
             project,
@@ -572,17 +572,17 @@ class ArtifactGenerator:
 
         return f"{hours:02}:{minutes:02}:{secs:02}:{frames:02}"
 
-    ##################### Comments ######################
+    ##################### insights ######################
 
-    def generate_comments_json(self, comments_data: Dict) -> Path:
-        """Generate canonical comments JSON."""
-        filename = "sdna_ai_spark_comments.json"
-        event_dir = self.export_dir / "comment"
+    def generate_insights_json(self, insights_data: Dict) -> Path:
+        """Generate canonical insights JSON."""
+        filename = "sdna_ai_spark_insights.json"
+        event_dir = self.export_dir / "insights"
         event_dir.mkdir(parents=True, exist_ok=True)
 
         filepath = event_dir / filename
 
-        segments = comments_data.get("segments", [])
+        segments = insights_data.get("segments", [])
 
         cleaned_segments = []
 
@@ -599,13 +599,13 @@ class ArtifactGenerator:
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(output_data, f, indent=2)
 
-        logger.info(f"Generated comments JSON : filepath={filepath}")
+        logger.info(f"Generated insights JSON : filepath={filepath}")
         return filepath
 
-    def generate_comments_csv(self, comments_data: Dict) -> Path:
-        """Generate CSV file from comments."""
-        filename = "sdna_ai_spark_comments.csv"
-        event_dir = self.export_dir / "comment"
+    def generate_insights_csv(self, insights_data: Dict) -> Path:
+        """Generate CSV file from insights."""
+        filename = "sdna_ai_spark_insights.csv"
+        event_dir = self.export_dir / "insights"
         event_dir.mkdir(parents=True, exist_ok=True)
 
         filepath = event_dir / filename
@@ -618,17 +618,17 @@ class ArtifactGenerator:
             writer = csv.DictWriter(f, fieldnames=headers, extrasaction="ignore")
             writer.writeheader()
             
-            for comment in comments_data.get("segments", []):
+            for comment in insights_data.get("segments", []):
                 row = {k: v for k, v in comment.items() if k != "metadata"}
                 writer.writerow(row)
 
-        logger.info(f"Generated comments CSV : filepath={filepath}")
+        logger.info(f"Generated insights CSV : filepath={filepath}")
         return filepath
 
-    def generate_comments_fcpxml(self, comments_data: Dict) -> Path:
-        """Generate FCPXML for comments (segments optional)."""
+    def generate_insights_fcpxml(self, insights_data: Dict) -> Path:
+        """Generate FCPXML for insights (segments optional)."""
 
-        segments: List[Dict] = comments_data.get("segments", [])
+        segments: List[Dict] = insights_data.get("segments", [])
 
         # ---------------------------------------------
         # Get optional video path
@@ -661,8 +661,8 @@ class ArtifactGenerator:
         # ---------------------------------------------
         # File path
         # ---------------------------------------------
-        filename = "sdna_ai_spark_comments.fcpxml"
-        event_dir = self.export_dir / "comment"
+        filename = "sdna_ai_spark_insights.fcpxml"
+        event_dir = self.export_dir / "insights"
         event_dir.mkdir(parents=True, exist_ok=True)
         filepath = event_dir / filename
 
@@ -704,8 +704,8 @@ class ArtifactGenerator:
         # Library structure
         # -----------------------------------------------------
         library = ET.SubElement(fcpxml, "library")
-        event = ET.SubElement(library, "event", name="AI Comments Event")
-        project = ET.SubElement(event, "project", name="AI Comments Project")
+        event = ET.SubElement(library, "event", name="AI insights Event")
+        project = ET.SubElement(event, "project", name="AI insights Project")
 
         sequence = ET.SubElement(
             project,
@@ -756,17 +756,17 @@ class ArtifactGenerator:
         # Write XML
         # -----------------------------------------------------
         pretty_xml = self._prettify_xml(fcpxml)
-        logger.info(f"Generated comments fcpxml : filepath={filepath}")
+        logger.info(f"Generated insights fcpxml : filepath={filepath}")
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(pretty_xml)
 
         return filepath
     
-    def generate_comments_edl(self, events: Dict, reel="AX", track="V") -> str:
+    def generate_insights_edl(self, events: Dict, reel="AX", track="V") -> str:
         """Convert event list → EDL text"""
 
-        filename = "sdna_ai_spark_comments.edl"
-        event_dir = self.export_dir / "comment"
+        filename = "sdna_ai_spark_insights.edl"
+        event_dir = self.export_dir / "insights"
         event_dir.mkdir(parents=True, exist_ok=True)
         filepath = event_dir / filename
 
@@ -830,7 +830,7 @@ class ArtifactGenerator:
         
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(edl_content)
-        logger.info(f"Generated comments edl : filepath={filepath}")
+        logger.info(f"Generated insights edl : filepath={filepath}")
         logger.info("--------------------------------------------------")
         return edl_content
 

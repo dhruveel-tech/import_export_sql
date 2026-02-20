@@ -9,8 +9,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from uuid import UUID
 from datetime import datetime
-
+import zipfile
 from fastapi import HTTPException
+from app.services.export_service import ExportService
 from sqlalchemy import select
 
 from app.db.session import AsyncSessionLocal, init_db
@@ -49,6 +50,8 @@ async def process_export_background(export_id: str):
     job = None
 
     try:
+        service = ExportService()
+        
         await _ensure_db()
 
         async with AsyncSessionLocal() as session:
@@ -107,14 +110,14 @@ async def process_export_background(export_id: str):
 
         # COMMENTS
         comments_data = None
-        if outputs.get("comments"):
-            comments_data = await fabric_client.get_comments(repo_guid, inputs)
-            for fmt in outputs["comments"]["formats"]:
-                filepath, status_msg = _generate_comments_artifact(generator, comments_data, fmt)
+        if outputs.get("insights"):
+            comments_data = await fabric_client.get_insights(repo_guid, inputs)
+            for fmt in outputs["insights"]["formats"]:
+                filepath, status_msg = _generate_insights_artifact(generator, comments_data, fmt)
                 if status_msg != "Success":
                     error_msg.append(status_msg)
                 if filepath:
-                    artifacts.append(_create_artifact_record(filepath, "comments", fmt, export_id))
+                    artifacts.append(_create_artifact_record(filepath, "insights", fmt, export_id))
 
         # SELECTS
         if outputs.get("selects", {}).get("enabled"):
@@ -138,6 +141,8 @@ async def process_export_background(export_id: str):
                 error_msg.append(status_msg)
             artifacts.append(_create_artifact_record(llm_prompt_path, "llm_instruct", "md", export_id))
 
+        zip_path = _create_zip_from_folder(export_id)
+        logger.info(f"Zip File Path Generated : {zip_path}")
         # MANIFEST
         manifest = ExportManifest(
             export_id=UUID(export_id),
@@ -146,7 +151,7 @@ async def process_export_background(export_id: str):
             created_at=job.created_at,
             artifacts=[ArtifactResponse(**art) for art in artifacts if art],
         )
-
+                
         async with AsyncSessionLocal() as session:
             result = await session.execute(
                 select(ExportJob).where(ExportJob.export_id == export_id)
@@ -154,9 +159,11 @@ async def process_export_background(export_id: str):
             job = result.scalar_one_or_none()
             job.manifest = json.dumps(manifest.model_dump(mode="json"))
             job.status = JobStatus.COMPLETED.value
+            job.zip_file_path = str(zip_path)
             job.completed_at = datetime.utcnow()
             job.export_path = str(generator.export_dir)
             await session.commit()
+            
 
         logger.info(f"Export processing completed : export_id={export_id} , artifacts_count={len(artifacts)}")
         logger.info("***************************************************************************************************************************")
@@ -520,23 +527,46 @@ def _generate_events_artifact(generator, data, fmt):
         return None, f"Events artifact generation failed : format={fmt} , error={str(exc)}"
 
 
-def _generate_comments_artifact(generator, data, fmt):
+def _generate_insights_artifact(generator, data, fmt):
     try:
         if fmt == "json":
-            return generator.generate_comments_json(data), "Success"
+            return generator.generate_insights_json(data), "Success"
         elif fmt == "csv":
-            return generator.generate_comments_csv(data), "Success"
+            return generator.generate_insights_csv(data), "Success"
         elif fmt == "fcpxml":
-            return generator.generate_comments_fcpxml(data), "Success"
+            return generator.generate_insights_fcpxml(data), "Success"
         elif fmt == "edl":
-            return generator.generate_comments_edl(data), "Success"
+            return generator.generate_insights_edl(data), "Success"
         else:
-            logger.error(f"Unsupported comments format : format={fmt}")
-            return None, f"Unsupported comments format : format={fmt}"
+            logger.error(f"Unsupported insights format : format={fmt}")
+            return None, f"Unsupported insights format : format={fmt}"
     except Exception as exc:
-        logger.error(f"Comments artifact generation failed : format={fmt} , error={str(exc)}")
-        return None, f"Comments artifact generation failed : format={fmt} , error={str(exc)}"
+        logger.error(f"Insights artifact generation failed : format={fmt} , error={str(exc)}")
+        return None, f"Insights artifact generation failed : format={fmt} , error={str(exc)}"
 
+def _create_zip_from_folder(export_id: UUID) -> str:
+    """
+    Zips the entire export folder into:
+    folder_path/export_id/export_id.zip
+    """
+
+    base_folder = Path(settings.EXPORT_BASE_PATH)
+    export_folder = base_folder / str(export_id)
+
+    if not export_folder.exists() or not export_folder.is_dir():
+        raise FileNotFoundError(f"Export folder not found: {export_folder}")
+
+    # Create zip path: folder_path/export_id/export_id.zip
+    zip_path = export_folder / f"{export_id}.zip"
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file_path in export_folder.rglob("*"):
+            if file_path.is_file() and file_path != zip_path:
+                # Preserve internal structure
+                zipf.write(file_path, file_path.relative_to(export_folder))
+
+    return str(zip_path)
+    
 
 def _create_selects_from_comments_markers(comments):
     selects = []

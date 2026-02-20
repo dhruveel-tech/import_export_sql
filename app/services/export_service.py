@@ -219,7 +219,7 @@ class ExportService:
         except Exception as exc:
             logger.error(f"Failed to save artifacts : export_job_id={export_job_id} , error={exc}", exc_info=True)
             return False
-
+        
     # ------------------------------------------------------------------
     # LLM PROMPT (file-based, unchanged)
     # ------------------------------------------------------------------
@@ -288,6 +288,7 @@ class ExportService:
             "export_preset": job.export_preset,
             "work_order": json.loads(job.work_order) if job.work_order else {},
             "status": job.status,
+            "zip_file_path": job.zip_file_path,
             "requested_by": job.requested_by,
             "export_path": job.export_path,
             "manifest": json.loads(job.manifest) if job.manifest else None,
