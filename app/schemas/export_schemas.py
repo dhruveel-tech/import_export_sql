@@ -39,7 +39,7 @@ class ExportOutputs(BaseModel):
     """Export output configuration."""
     transcript: Optional[OutputFormats] = None
     events: Optional[OutputFormats] = None
-    comments: Optional[OutputFormats] = None
+    insight: Optional[OutputFormats] = None
     markers: Optional[OutputFormats] = None
     grounding: GroundingConfig = Field(default_factory=GroundingConfig)
 
@@ -54,7 +54,7 @@ class ExportMetadata(BaseModel):
 
 class ExportWorkOrderCreate(BaseModel):
     """Schema for creating an export work order."""
-    spark_version: str = Field(default="1.0")
+    schemaVersion: str = Field(default="1.0")
     repo_guid: str = Field(..., min_length=1, max_length=255)
     inputs: ExportInputs = Field(default_factory=ExportInputs)
     user_inputs: UserInputs = Field(default_factory=UserInputs)
@@ -66,8 +66,8 @@ class ArtifactResponse(BaseModel):
     """Response schema for an artifact."""
     artifact_type: str
     format: str
-    filename: str
-    url: str
+    file_name: str
+    file_path: str
     file_size: Optional[int] = None
 
     class Config:

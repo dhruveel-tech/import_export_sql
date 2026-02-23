@@ -160,6 +160,7 @@ class VideoSplitService:
             "output_folder": job.output_folder,
             "work_order": json.loads(job.work_order) if job.work_order else {},
             "status": job.status,
+            "zip_file_path": job.zip_file_path,
             "requested_by": job.requested_by,
             "results": json.loads(job.results) if job.results else None,
             "segments_processed": job.segments_processed,

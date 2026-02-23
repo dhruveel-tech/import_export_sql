@@ -55,7 +55,7 @@ async def create_import(
         )
         raise HTTPException(status_code=500, detail="Failed to create import job")
 
-@router.post("/file_upload", response_model=ImportJobResponse, status_code=202)
+@router.post("/file_uploads", response_model=ImportJobResponse, status_code=202)
 async def create_import(
     schemaVersion: str = Form(...),
     repo_guid: str = Form(...),

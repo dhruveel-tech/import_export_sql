@@ -99,6 +99,7 @@ class ExportService:
 
                 response = self._to_response(job)
                 response.manifest = manifest
+                
                 return response
 
         except Exception as exc:

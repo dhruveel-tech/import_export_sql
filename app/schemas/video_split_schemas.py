@@ -21,7 +21,7 @@ class ExportVideoOutputs(BaseModel):
     
 class VideoSplitWorkOrderCreate(BaseModel):
     """Request to split a video into segments."""
-    spark_version: str = Field(default="1.0")
+    schemaVersion: str = Field(default="1.0")
     repo_guid: str = Field(..., min_length=1, max_length=255)
     inputs: ExportVideoInputs = Field(default_factory=ExportVideoInputs)
     outputs: ExportVideoOutputs = Field(default_factory=ExportVideoOutputs)
@@ -33,22 +33,24 @@ class VideoSplitWorkOrderCreate(BaseModel):
     model_config = {
         "json_schema_extra": {
             "example": {
+                "schemaVersion": "1.0",
                 "repo_guid": "repo-123",
-                "video_filepath": "/media/videos/interview.mp4",
-                "segments": [
-                    {
-                        "start_time": 30.0,
-                        "end_time": 45.5,
-                        "label": "Good quote"
-                    },
-                    {
-                        "start_time": 120.0,
-                        "end_time": 135.0,
-                        "label": "Hero moment"
-                    }
-                ],
+                "inputs": {
+                    "event_ids": [
+                        "event-001",
+                        "event-002"
+                    ],
+                    "video_path": "/media/videos/interview.mp4"
+                },
+                "outputs": {
+                    "full_video": False,
+                    "individual_segments": True,
+                    "merge_segments": False
+                },
                 "handle_seconds": 2.0,
-                "encoding": "copy"
+                "output_folder": "/media/exports",
+                "encoding": "copy",
+                "requested_by": "editor@company.com"
             }
         }
     }
@@ -57,8 +59,8 @@ class ArtifactVideoSplitResponse(BaseModel):
     """Response schema for an artifact."""
     artifact_type: str
     format: str
-    filename: str
-    url: str
+    file_name: str
+    file_path: str
     file_size: Optional[int] = None
 
     class Config:
@@ -77,6 +79,7 @@ class VideoSplitJobResponse(BaseModel):
     split_job_id: UUID
     repo_guid: str
     status: str  
+    zip_file_path: str
     video_file_path: str
     handle_seconds: float
     error_message: Optional[str] = None

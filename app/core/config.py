@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 5_368_709_120  # 5GB
     ALLOWED_IMPORT_FORMATS: str = "json,csv"
 
+    # EngineX / Export Server Settings
+    ENGINEX_BASE_URL: str ="http://192.168.0.146:4000"
+    EXPORT_URL_PREFIX : str ="https://enginex.example.com/exports"
+
     # Fabric Integration Settings
     FABRIC_API_URL: str = "http://192.168.0.50:4080"
     FABRIC_API_KEY: str = "$2b$10$JGCRHRqAqk6nry/nYj5poHiKImJXeAtSZ8cpO"

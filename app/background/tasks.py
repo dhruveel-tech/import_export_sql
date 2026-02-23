@@ -141,7 +141,7 @@ async def process_export_background(export_id: str):
                 error_msg.append(status_msg)
             artifacts.append(_create_artifact_record(llm_prompt_path, "llm_instruct", "md", export_id))
 
-        zip_path = _create_zip_from_folder(export_id)
+        zip_path = _create_zip_from_folder(export_id, settings.EXPORT_BASE_PATH)
         logger.info(f"Zip File Path Generated : {zip_path}")
         # MANIFEST
         manifest = ExportManifest(
@@ -421,6 +421,9 @@ async def process_video_split_task(split_job_id: str):
                 segments_failed += 1
                 logger.error(f"Merge segments failed : error={str(e)}")
 
+        zip_path = _create_zip_from_folder(split_job_id, settings.EXPORT_VIDEO_SPIT_PATH)
+        logger.info(f"Zip File Path Generated : {zip_path}")
+        
         # MANIFEST
         manifest = ExportVideoSplitManifest(
             split_job_id=UUID(split_job_id),
@@ -437,6 +440,7 @@ async def process_video_split_task(split_job_id: str):
             job = result.scalar_one_or_none()
             job.results = json.dumps(results)
             job.status = JobStatus.COMPLETED.value if segments_failed == 0 else JobStatus.FAILED.value
+            job.zip_file_path = str(zip_path)
             job.completed_at = datetime.utcnow()
             job.manifest = json.dumps(manifest.model_dump(mode="json"))
             job.segments_processed = segments_processed
@@ -544,13 +548,13 @@ def _generate_insights_artifact(generator, data, fmt):
         logger.error(f"Insights artifact generation failed : format={fmt} , error={str(exc)}")
         return None, f"Insights artifact generation failed : format={fmt} , error={str(exc)}"
 
-def _create_zip_from_folder(export_id: UUID) -> str:
+def _create_zip_from_folder(export_id: UUID, zip_base_folder_path: str) -> str:
     """
     Zips the entire export folder into:
     folder_path/export_id/export_id.zip
     """
 
-    base_folder = Path(settings.EXPORT_BASE_PATH)
+    base_folder = Path(zip_base_folder_path)
     export_folder = base_folder / str(export_id)
 
     if not export_folder.exists() or not export_folder.is_dir():
@@ -593,7 +597,6 @@ def _create_artifact_record(filepath, artifact_type, fmt, export_id):
 
         filepath = Path(filepath)
         filename = filepath.name
-        url = f"{settings.FABRIC_API_URL}/{export_id}/{filename}"
 
         try:
             file_size = filepath.stat().st_size if filepath.exists() else 0
@@ -604,8 +607,8 @@ def _create_artifact_record(filepath, artifact_type, fmt, export_id):
         return {
             "artifact_type": artifact_type,
             "format": fmt,
-            "filename": filename,
-            "url": url,
+            "file_name": filename,
+            "file_path": str(filepath),
             "file_size": file_size,
         }
 

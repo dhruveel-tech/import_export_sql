@@ -252,6 +252,7 @@ class VideoSplitJob(Base):
     output_folder = Column(String, nullable=False)
     work_order = Column(Text, nullable=False)          # JSON
     status = Column(String, index=True, default=JobStatus.PENDING.value)
+    zip_file_path = Column(String, nullable=True)
     requested_by = Column(String, nullable=True)
     results = Column(Text, nullable=True)              # JSON list
     segments_processed = Column(Integer, default=0)
@@ -284,6 +285,7 @@ class VideoSplitJob(Base):
             "output_folder": self.output_folder,
             "work_order": _from_json(self.work_order),
             "status": self.status,
+            "zip_file_path": self.zip_file_path,
             "requested_by": self.requested_by,
             "results": _from_json(self.results),
             "segments_processed": self.segments_processed,
