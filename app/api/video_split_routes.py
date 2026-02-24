@@ -4,7 +4,8 @@ Video Split API Routes (SQLite)
 import traceback
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Query, BackgroundTasks
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from app.db.session import AsyncSessionLocal
@@ -43,11 +44,23 @@ async def create_video_split(
 
     except ValueError as e:
         logger.error(f"Validation error : error={str(e)} , repo_guid={work_order.repo_guid}")
-        raise HTTPException(status_code=400, detail=str(e))
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "error",
+                "message": f"Failed to Create Video Spkit Job : {str(e)}"
+            }
+        )
 
     except Exception as e:
         logger.error(f"Failed to create video split job : error={str(e)} , repo_guid={work_order.repo_guid}")
-        raise HTTPException(status_code=500, detail=f"Failed to create video split job: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Failed to create video split job: {str(e)}"
+            }
+        )
 
 
 @router.get("/{split_job_id}/status", response_model=VideoSplitStatusResponse)
@@ -60,7 +73,13 @@ async def get_video_split_status(split_job_id: str):
         job = result.scalar_one_or_none()
 
     if not job:
-        raise HTTPException(status_code=404, detail=f"Video split job not found: {split_job_id}")
+        return JSONResponse(
+            status_code=404,
+            content={
+                "status": "error",
+                "message": f"Video split job not found: {split_job_id}"
+            }
+        )
 
     return VideoSplitStatusResponse(
         split_job_id=job.split_job_id,
@@ -82,7 +101,13 @@ async def get_video_split(split_job_id: str):
         job = result.scalar_one_or_none()
 
     if not job:
-        raise HTTPException(status_code=404, detail=f"Video split job not found: {split_job_id}")
+        return JSONResponse(
+            status_code=404,
+            content={
+                "status": "error",
+                "message": f"Video split job not found: {split_job_id}"
+            }
+        )
 
     return VideoSplitService._to_response(job)
 
@@ -103,4 +128,10 @@ async def list_video_split_jobs(
         logger.error(
             f"Failed to list export jobs : repo_guid={repo_guid} , limit={limit} , error={str(exc)} , traceback={traceback.format_exc()}"
         )
-        raise HTTPException(status_code=500, detail="Failed to list export jobs")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": "Failed to list export jobs"
+            }
+        )

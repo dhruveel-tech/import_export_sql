@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 from uuid import UUID
 from datetime import datetime
 import zipfile
-from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 from app.services.export_service import ExportService
 from sqlalchemy import select
 
@@ -109,11 +109,11 @@ async def process_export_background(export_id: str):
                     artifacts.append(_create_artifact_record(filepath, "events", fmt, export_id))
 
         # COMMENTS
-        comments_data = None
+        insights_data = None
         if outputs.get("insights"):
-            comments_data = await fabric_client.get_insights(repo_guid, inputs)
+            insights_data = await fabric_client.get_insights(repo_guid, inputs)
             for fmt in outputs["insights"]["formats"]:
-                filepath, status_msg = _generate_insights_artifact(generator, comments_data, fmt)
+                filepath, status_msg = _generate_insights_artifact(generator, insights_data, fmt)
                 if status_msg != "Success":
                     error_msg.append(status_msg)
                 if filepath:
@@ -121,7 +121,7 @@ async def process_export_background(export_id: str):
 
         # SELECTS
         if outputs.get("selects", {}).get("enabled"):
-            selects_data = _create_selects_from_comments_markers(comments_data or [])
+            selects_data = _create_selects_from_comments_markers(insights_data or [])
             for fmt in outputs["selects"]["formats"]:
                 if fmt == "edl":
                     filepath = generator.generate_selects_edl(selects_data)
@@ -346,7 +346,13 @@ async def process_video_split_task(split_job_id: str):
         video_service = VideoSplitClient(output_base_path=job.output_folder)
 
         if not video_service.check_ffmpeg_available():
-            raise HTTPException(status_code=503, detail="FFmpeg or FFprobe not available on the system")
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "error",
+                    "message": "FFmpeg or FFprobe not available on the system"
+                }
+            )
 
         total_duration = video_service.get_video_duration(job.video_file_path)
         video_path = Path(job.video_file_path)
@@ -558,7 +564,13 @@ def _create_zip_from_folder(export_id: UUID, zip_base_folder_path: str) -> str:
     export_folder = base_folder / str(export_id)
 
     if not export_folder.exists() or not export_folder.is_dir():
-        raise FileNotFoundError(f"Export folder not found: {export_folder}")
+        return JSONResponse(
+            status_code=404,
+            content={
+                "status": "error",
+                "message": f"Export folder not found: {export_folder}"
+            }
+        )
 
     # Create zip path: folder_path/export_id/export_id.zip
     zip_path = export_folder / f"{export_id}.zip"

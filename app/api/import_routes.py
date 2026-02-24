@@ -5,12 +5,11 @@ import json
 from uuid import UUID
 import traceback
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, BackgroundTasks
-
+from fastapi import APIRouter, UploadFile, File, Form, Query, BackgroundTasks
+from fastapi.responses import JSONResponse
 from app.schemas.import_schemas import (
     ImportJobListResponse,
     ImportWorkOrder,
-    Highlight,
     ImportJobResponse
 )
 from app.services.import_service import ImportService
@@ -47,13 +46,25 @@ async def create_import(
 
     except ValueError as exc:
         logger.warning(f"LLM import validation failed : error={str(exc)}")
-        raise HTTPException(status_code=400, detail=str(exc))
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "error",
+                "message": str(exc)
+            }
+        )
 
     except Exception as exc:
         logger.error(
             f"Failed to create LLM import job : error={str(exc)} , traceback={traceback.format_exc()}"
         )
-        raise HTTPException(status_code=500, detail="Failed to create import job")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Failed to create import job : {str(exc)}"
+            }
+        )
 
 @router.post("/file_uploads", response_model=ImportJobResponse, status_code=202)
 async def create_import(
@@ -94,13 +105,25 @@ async def create_import(
 
     except ValueError as exc:
         logger.warning(f"LLM import validation failed : error={str(exc)}")
-        raise HTTPException(status_code=400, detail=str(exc))
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "error",
+                "message": str(exc)
+            }
+        )
 
     except Exception as exc:
         logger.error(
             f"Failed to create LLM import job : error={str(exc)} , traceback={traceback.format_exc()}"
         )
-        raise HTTPException(status_code=500, detail="Failed to create import job")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Failed to create import job : {str(exc)}"
+            }
+        )
     
 # ------------------------------------------------------------------
 # GET IMPORT STATUS
@@ -116,7 +139,13 @@ async def get_import_status(import_id: UUID):
         job = await service.get_import_job(import_id)
 
         if not job:
-            raise HTTPException(status_code=404, detail=f"Import job not found: {import_id}")
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "status": "error",
+                    "message": f"Import job not found: {import_id}"
+                }
+            )
         return ImportJobResponse(
             import_id=job.import_id,
             repo_guid=job.repo_guid,
@@ -137,7 +166,13 @@ async def get_import_status(import_id: UUID):
             f"Failed to fetch LLM import status : import_id={import_id} , "
             f"error={str(exc)} , traceback={traceback.format_exc()}"
         )
-        raise HTTPException(status_code=500, detail="Failed to fetch import job status")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Failed to fetch import job status : {str(exc)}"
+            }
+        )
 
 
 # ------------------------------------------------------------------
@@ -154,7 +189,13 @@ async def get_import(import_id: UUID):
         job = await service.get_import_job(import_id)
 
         if not job:
-            raise HTTPException(status_code=404, detail=f"Import job not found: {import_id}")
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "status": "error",
+                    "message": f"Import job not found: {import_id}"
+                }
+            )
 
         return job
 
@@ -163,7 +204,13 @@ async def get_import(import_id: UUID):
             f"Failed to fetch LLM import job : import_id={import_id} , "
             f"error={str(exc)} , traceback={traceback.format_exc()}"
         )
-        raise HTTPException(status_code=500, detail="Failed to fetch import job")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Failed to fetch import job : {str(exc)}"
+            }
+        )
     
 @router.get("", response_model=ImportJobListResponse)
 async def list_exports(
@@ -187,7 +234,10 @@ async def list_exports(
         logger.error(
             f"Failed to list import jobs : repo_guid={repo_guid} , limit={limit} , error={str(exc)} , traceback={traceback.format_exc()}",
         )
-        raise HTTPException(
+        return JSONResponse(
             status_code=500,
-            detail="Failed to list export jobs",
+            content={
+                "status": "error",
+                "message": f"Failed to list export jobs : {str(exc)}"
+            }
         )

@@ -90,7 +90,7 @@ class FabricClient:
 
             ids = inputs.get("event_ids", []) if inputs else []
 
-            query["sdnaEventType"] = {"$nin": ["transcript", "comment"]}
+            query["sdnaEventType"] = {"$nin": ["transcript", "insight"]}
             if ids:
                 query["_id"] = {"$in": [self._to_object_id(i) for i in ids]}
 
@@ -124,10 +124,10 @@ class FabricClient:
     async def get_insights(self, repo_guid: str, inputs: Optional[Dict] = None) -> Dict:
         try:
             col = self._collection(settings.MONGODB_COLLECTION_NAME_FOR_GET_DATA)
-
+            
             ids = inputs.get("event_ids", []) if inputs else []
 
-            query: Dict[str, Any] = {"sdnaEventType": "insights"}
+            query: Dict[str, Any] = {"sdnaEventType": "insight"}
 
             if ids:
                 query["_id"] = {"$in": [self._to_object_id(i) for i in ids]}
@@ -174,79 +174,97 @@ class FabricClient:
 
         created_count = 0
         skipped_count = 0
+        status_msg = None
 
-        if not highlights:
-            return {"created": 0, "updated": 0, "skipped": 0, "total": 0}
+        try:
+            if not highlights:
+                return {"created": 0, "updated": 0, "skipped": 0, "total": 0}
 
-        url = f"{settings.FABRIC_API_URL}/catalogs/aiEnrichedMetadata/insights/llm/add"
-        file_name = full_path.split("/")[-1] if full_path else ""
-        headers = {"apiKey": settings.FABRIC_API_KEY}
+            url = f"{settings.FABRIC_API_URL}/catalogs/aiEnrichedMetadata/insights/llm/add"
+            file_name = full_path.split("/")[-1] if full_path else ""
+            headers = {"apiKey": settings.FABRIC_API_KEY}
 
-        BATCH_SIZE = 500  # ⭐ safe batch size for Node + network
-        statu_msg = None
-        async with httpx.AsyncClient(timeout=settings.FABRIC_API_TIMEOUT) as client:
-            for i in range(0, len(highlights), BATCH_SIZE):
-                batch = highlights[i : i + BATCH_SIZE]
+            BATCH_SIZE = 500
 
-                custom_events = []
-                for h in batch:
+            async with httpx.AsyncClient(timeout=settings.FABRIC_API_TIMEOUT) as client:
+                for i in range(0, len(highlights), BATCH_SIZE):
+                    batch = highlights[i : i + BATCH_SIZE]
+
+                    custom_events = []
+
+                    for h in batch:
+                        try:
+                            custom_events.append(
+                                {
+                                    "insight": h.get("insight", ""),
+                                    "start": float(h.get("start", 0)),
+                                    "end": float(h.get("end", 0)),
+                                    "confidenceScore": float(h.get("confidenceScore", 0)),
+                                    "eventMeta": {
+                                        "associatedEventIds": (
+                                            h.get("eventMeta") or {}
+                                        ).get("associatedEventIds", [])
+                                    },
+                                }
+                            )
+                        except Exception as e:
+                            skipped_count += 1
+                            logger.exception(
+                                "Failed to parse highlight event, skipping. Error: %s", e
+                            )
+
+                    if not custom_events:
+                        continue
+
+                    node_payload = {
+                        "repoGuid": repo_guid,
+                        "fullPath": full_path,
+                        "fileName": file_name,
+                        "insightEvents": custom_events,
+                    }
+
                     try:
-                        custom_events.append(
-                            {
-                                "insight": h.get("insight", ""),
-                                "start": h.get("start", ""),
-                                "end": h.get("end", ""),
-                                "confidenceScore": h.get("confidenceScore", 0),
-                                "eventMeta": {
-                                    "associatedEventIds": h.get("eventMeta", {}).get(
-                                        "associatedEventIds", []
-                                    )
-                                },
-                            }
+                        response = await client.post(
+                            url, json=node_payload, headers=headers
                         )
-                    except Exception:
-                        skipped_count += 1
-                        logger.exception("Failed to parse highlight event, skipping.")
 
-                if not custom_events:
-                    continue
+                        if response.is_success:
+                            created_count += len(custom_events)
+                            status_msg = "success"
+                        else:
+                            skipped_count += len(custom_events)
+                            status_msg = (
+                                f"Node API failure: "
+                                f"status={response.status_code}, body={response.text}"
+                            )
+                            logger.error(status_msg)
 
-                node_payload = {
-                    "repoGuid": repo_guid,
-                    "fullPath": full_path,
-                    "fileName": file_name,
-                    "insightEvents": custom_events,
-                }
-                try:
-                    response = await client.post(url, json=node_payload, headers=headers)
-
-                    if response.is_success:
-                        created_count += len(custom_events)
-                        statu_msg = "success"
-                    else:
+                    except httpx.HTTPError as e:
                         skipped_count += len(custom_events)
-                        logger.error(
-                            "Node API failure :- status=%s , body=%s",
-                            response.status_code,
-                            response.text,
-                        )
-                        statu_msg = f"Node API failure : status={response.status_code} , body={response.text}"
+                        status_msg = f"HTTP error during Node API call: {str(e)}"
+                        logger.exception(status_msg)
 
-                except httpx.HTTPError as e:
-                    skipped_count += len(custom_events)
-                    statu_msg = f"Node API failure : {e}"
-                    logger.exception(f"HTTP error during Node API call: {e}")
+            logger.info(
+                "LLM highlights sent to Node API: created=%s, skipped=%s",
+                created_count,
+                skipped_count,
+            )
 
-        logger.info(
-            "LLM highlights sent to Node API : created=%s , skipped=%s",
-            created_count,
-            skipped_count,
-        )
+            return {
+                "created": created_count,
+                "updated": 0,
+                "skipped": skipped_count,
+                "total": created_count + skipped_count,
+                "error_msg": status_msg,
+            }
 
-        return {
-            "created": created_count,
-            "updated": 0,
-            "skipped": skipped_count,
-            "total": created_count + skipped_count,
-            "error_msg":statu_msg
-        }
+        except Exception as e:
+            logger.exception("Unexpected failure in ingest_llm_highlights")
+
+            return {
+                "created": created_count,
+                "updated": 0,
+                "skipped": len(highlights) if highlights else 0,
+                "total": len(highlights) if highlights else 0,
+                "error_msg": f"Unexpected error: {str(e)}",
+            }

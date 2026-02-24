@@ -39,7 +39,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "1. The SQLITE_DB_PATH directory is writable | "
             "2. SQLITE_DB_PATH in .env is correct"
         )
-        raise
+        # ✅ Stop application startup properly
+        raise RuntimeError(
+            f"Failed to initialize SQLite database : {str(e)}"
+        )
 
     yield
 

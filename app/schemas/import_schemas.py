@@ -4,6 +4,7 @@ Import-related Pydantic Schemas
 from datetime import datetime
 from typing import List, Optional, Dict, Any,  Literal
 from uuid import UUID
+from fastapi.responses import JSONResponse
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator, RootModel
 
@@ -31,7 +32,13 @@ class Highlight(BaseModel):
     @model_validator(mode="after")
     def validate_time_range(self):
         if self.end <= self.start:
-            raise ValueError("end must be greater than start")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": "error",
+                    "message": "end must be greater than start"
+                }
+            )
         return self
 
     model_config = ConfigDict(extra="forbid")
@@ -52,7 +59,13 @@ class ImportWorkOrder(BaseModel):
     @classmethod
     def validate_highlights_not_empty(cls, v: List[Highlight]):
         if not v:
-            raise ValueError("highlights must contain at least one item")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "error",
+                    "message": "highlights must contain at least one item"
+                }
+            )
         return v
 
     model_config = ConfigDict(extra="forbid")

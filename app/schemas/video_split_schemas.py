@@ -79,7 +79,7 @@ class VideoSplitJobResponse(BaseModel):
     split_job_id: UUID
     repo_guid: str
     status: str  
-    zip_file_path: str
+    zip_file_path: Optional[str] = None
     video_file_path: str
     handle_seconds: float
     error_message: Optional[str] = None

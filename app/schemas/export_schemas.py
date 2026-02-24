@@ -4,6 +4,7 @@ Export-related Pydantic Schemas
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from uuid import UUID
+from fastapi.responses import JSONResponse
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -19,7 +20,13 @@ class OutputFormats(BaseModel):
         allowed = {"json", "csv", "srt", "vtt", "fcpxml", "edl"}
         for fmt in v:
             if fmt not in allowed:
-                raise ValueError(f"Invalid format: {fmt}. Allowed: {allowed}")
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "status": "error",
+                        "message": f"Invalid format: {fmt}. Allowed: {allowed}"
+                    }
+                )
         return v
 
 class GroundingConfig(BaseModel):
@@ -39,7 +46,7 @@ class ExportOutputs(BaseModel):
     """Export output configuration."""
     transcript: Optional[OutputFormats] = None
     events: Optional[OutputFormats] = None
-    insight: Optional[OutputFormats] = None
+    insights: Optional[OutputFormats] = None
     markers: Optional[OutputFormats] = None
     grounding: GroundingConfig = Field(default_factory=GroundingConfig)
 

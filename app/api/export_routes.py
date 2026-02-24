@@ -5,7 +5,8 @@ from typing import Optional
 from uuid import UUID
 import traceback
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Query, BackgroundTasks
+from fastapi.responses import JSONResponse
 
 from app.schemas.export_schemas import (
     ExportWorkOrderCreate,
@@ -35,7 +36,6 @@ async def create_export(
 
     try:
         job = await service.create_export_job(work_order)
-        print(f" -----> job : {job}")
         # Queue background export processing
         background_tasks.add_task(process_export_background, str(job.export_id))
 
@@ -43,15 +43,24 @@ async def create_export(
 
     except ValueError as exc:
         logger.warning(f"Export validation failed : {str(exc)}")
-        raise HTTPException(status_code=400, detail=str(exc))
+        return JSONResponse(
+            status_code=404,
+            content={
+                "status": "error",
+                "message": str(exc)
+            }
+        )
 
     except Exception as exc:
         logger.error(
             f"Failed to create  job : {str(exc)} , traceback={traceback.format_exc()}"
         )
-        raise HTTPException(
+        return JSONResponse(
             status_code=500,
-            detail="Failed to create  job",
+            content={
+                "status": "error",
+                "message": f"Failed to create  job : {str(exc)}" 
+            }
         )
 
 
@@ -66,7 +75,13 @@ async def get_export_status(export_id: UUID):
         job = await service.get_export_job(export_id)
 
         if not job:
-            raise HTTPException(status_code=404, detail=f"Export job not found: {export_id}")
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "status": "error",
+                    "message": f"Export job not found: {export_id}" 
+                }
+            )
 
         return ExportJobStatusResponse(
             export_id=job.export_id,
@@ -77,16 +92,16 @@ async def get_export_status(export_id: UUID):
             error_message=job.error_message,
         )
 
-    except HTTPException:
-        raise
-
     except Exception as exc:
         logger.error(
             f"Failed to fetch export job status : export_id={str(export_id)} , error={str(exc)} , traceback={traceback.format_exc()}"
         )
-        raise HTTPException(
+        return JSONResponse(
             status_code=500,
-            detail="Failed to fetch export job status",
+            content={
+                "status": "error",
+                "message": "Failed to fetch export job status" 
+            }
         )
     
 @router.get("/{export_id}", response_model=ExportJobResponse)
@@ -100,24 +115,27 @@ async def get_export(export_id: UUID):
         job = await service.get_export_job(export_id)
 
         if not job:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=404,
-                detail=f"Export job not found: {export_id}"
+                content={
+                    "status": "error",
+                    "message": f"Export job not found: {export_id}"
+                }
             )
 
         return job
-
-    except HTTPException:
-        raise
 
     except Exception as exc:
         logger.error(
             f"Failed to fetch export job : export_id={str(export_id)} , "
             f"error={str(exc)} , traceback={traceback.format_exc()}",
         )
-        raise HTTPException(
+        return JSONResponse(
             status_code=500,
-            detail="Failed to fetch export job",
+            content={
+                "status": "error",
+                "message": "Failed to fetch export job"
+            }
         )
 
 
@@ -143,9 +161,12 @@ async def list_exports(
         logger.error(
             f"Failed to list export jobs : repo_guid={repo_guid} , limit={limit} , error={str(exc)} , traceback={traceback.format_exc()}",
         )
-        raise HTTPException(
+        return JSONResponse(
             status_code=500,
-            detail="Failed to list export jobs",
+            content={
+                "status": "error",
+                "message": "Failed to list export jobs"
+            }
         )
 
 @router.get("/llm_instruct_file/{export_id}", response_model=GetLLmPromptResponse)
@@ -158,7 +179,14 @@ async def get_llm_instruct_file(
         response = await service.get_llm_prompt(export_id)
 
         if not response:
-            raise HTTPException(status_code=404, detail=f"LLm Instruct File not found: {export_id}")
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "status": "error",
+                    "message": f"LLm Instruct File not found: {export_id}"
+                }
+            )
+            
 
         return response
 
@@ -166,9 +194,12 @@ async def get_llm_instruct_file(
         logger.error(
             f"Failed to fetch LLm Instruct File : export_id={str(export_id)} , error={str(exc)} , traceback={traceback.format_exc()}",
         )
-        raise HTTPException(
+        return JSONResponse(
             status_code=500,
-            detail="Failed to fetch LLm Instruct File",
+            content={
+                "status": "error",
+                "message": "Failed to fetch LLm Instruct File"
+            }
         )
         
 @router.put("/llm_instruct_file", response_model=UpdateLLmPromptResponse, status_code=202)
@@ -181,7 +212,13 @@ async def update_llm_instruct_file(
         response = await service.update_llm_prompt(data.export_id, data.prompt)
 
         if not response:
-            raise HTTPException(status_code=404, detail=f"LLm Instruct File not found: {data.export_id}")
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "status": "error",
+                    "message": f"LLm Instruct File not found: {data.export_id}"
+                }
+            )
 
         return response
 
@@ -189,7 +226,10 @@ async def update_llm_instruct_file(
         logger.error(
             f"Failed to fetch LLm Instruct File : export_id={str(data.export_id)} , error={str(exc)} , traceback={traceback.format_exc()}",
         )
-        raise HTTPException(
+        return JSONResponse(
             status_code=500,
-            detail="Failed to fetch LLm Instruct File",
+            content={
+                "status": "error",
+                "message": "Failed to fetch LLm Instruct File"
+            }
         )
