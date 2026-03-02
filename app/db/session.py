@@ -13,7 +13,7 @@ class Base(DeclarativeBase):
 # Create async engine
 engine = create_async_engine(
     settings.database_url,
-    echo=settings.DEBUG,
+    echo=False,
     connect_args={"check_same_thread": False},
 )
 

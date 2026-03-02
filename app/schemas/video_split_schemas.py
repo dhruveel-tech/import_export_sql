@@ -13,11 +13,22 @@ class ExportVideoInputs(BaseModel):
     event_ids: List[str] = Field(default_factory=list)
     video_path: str = Field(..., min_length=1, description="Absolute path of source video")
 
+class FeatureToggle(BaseModel):
+    is_enabled: bool = False
+
+
+class ResizeVideoConfig(BaseModel):
+    is_enabled: bool = False
+    width: Optional[int] = None
+    height: Optional[int] = None
+
+
 class ExportVideoOutputs(BaseModel):
     """Export output configuration."""
-    full_video: Optional[bool] = False
-    individual_segments: Optional[bool] = False
-    merge_segments: Optional[bool] = False
+    full_video: Optional[FeatureToggle] = None
+    individual_segments: Optional[FeatureToggle] = None
+    merge_segments: Optional[FeatureToggle] = None
+    resize_video: Optional[ResizeVideoConfig] = None
     
 class VideoSplitWorkOrderCreate(BaseModel):
     """Request to split a video into segments."""
@@ -43,9 +54,20 @@ class VideoSplitWorkOrderCreate(BaseModel):
                     "video_path": "/media/videos/interview.mp4"
                 },
                 "outputs": {
-                    "full_video": False,
-                    "individual_segments": True,
-                    "merge_segments": False
+                    "full_video": {
+                        "is_enabled": True
+                    },
+                    "individual_segments": {
+                        "is_enabled": True
+                    },
+                    "merge_segments": {
+                        "is_enabled": True
+                    },
+                    "resize_video": {
+                        "is_enabled": True,
+                        "width": 1280,
+                        "height": 720
+                    }
                 },
                 "handle_seconds": 2.0,
                 "output_folder": "/media/exports",

@@ -152,136 +152,306 @@ class ArtifactGenerator:
         logger.info(f"Generated transcript VTT : filepath={filepath} , segments_written={idx}")
         return filepath
 
+    # def generate_transcript_fcpxml(self, transcript_data: Dict) -> Path:
+    #     """Generate FCPXML for transcript (segments optional)."""
+    #     segments: List[Dict] = transcript_data.get("segments", [])
+    #     # ---------------------------------------------
+    #     # Get optional video path
+    #     # ---------------------------------------------
+    #     video_path = segments[0].get("fullPath") if segments else None
+    #     video_path = r"D:\SDNA\AI_Spark\test\36_celebraties.mp4"  
+    #     meta = None
+    #     if os.path.exists(video_path):
+    #         meta = self._get_video_metadata(video_path)
+
+    #         frame_duration = self._fps_to_frame_duration(meta["fps"])
+    #         video_duration = self._seconds_to_fcpx_time(meta["duration"])
+    #         width = str(meta["width"])
+    #         height = str(meta["height"])
+    #     else:
+    #         # ---------------------------------------------
+    #         # Safe fallback when NO segments or NO video
+    #         # ---------------------------------------------
+    #         frame_duration = "1/25s"
+
+    #         if segments:
+    #             duration_seconds = max(float(seg["end"]) for seg in segments)
+    #         else:
+    #             duration_seconds = 1  # minimal valid duration
+
+    #         video_duration = self._seconds_to_fcpx_time(duration_seconds)
+    #         width = "1920"
+    #         height = "1080"
+
+    #     # ---------------------------------------------
+    #     # File path
+    #     # ---------------------------------------------
+    #     filename = "sdna_ai_spark_transcript.fcpxml"
+    #     event_dir = self.export_dir / "transcript"
+    #     event_dir.mkdir(parents=True, exist_ok=True)
+    #     filepath = event_dir / filename
+
+    #     # -----------------------------------------------------
+    #     # Root
+    #     # -----------------------------------------------------
+    #     fcpxml = ET.Element("fcpxml", version="1.10")
+
+    #     # -----------------------------------------------------
+    #     # Resources
+    #     # -----------------------------------------------------
+    #     resources = ET.SubElement(fcpxml, "resources")
+
+    #     ET.SubElement(
+    #         resources,
+    #         "format",
+    #         id="r1",
+    #         name=f"FFVideoFormat{height}p",
+    #         frameDuration=frame_duration,
+    #         width=width,
+    #         height=height,
+    #     )
+
+    #     if video_path:
+    #         ET.SubElement(
+    #             resources,
+    #             "asset",
+    #             id="r2",
+    #             name=Path(video_path).name,
+    #             src=video_path,
+    #             start="0s",
+    #             duration=video_duration,
+    #             hasVideo="1",
+    #             hasAudio="1",
+    #             format="r1",
+    #         )
+
+    #     # -----------------------------------------------------
+    #     # Library structure
+    #     # -----------------------------------------------------
+    #     library = ET.SubElement(fcpxml, "library")
+    #     event = ET.SubElement(library, "event", name="AI transcript Event")
+    #     project = ET.SubElement(event, "project", name="AI transcript Project")
+
+    #     sequence = ET.SubElement(
+    #         project,
+    #         "sequence",
+    #         duration=video_duration,
+    #         format="r1",
+    #     )
+
+    #     spine = ET.SubElement(sequence, "spine")
+
+    #     # asset-clip only if video exists
+    #     asset_clip = (
+    #         ET.SubElement(
+    #             spine,
+    #             "asset-clip",
+    #             name="video",
+    #             ref="r2",
+    #             offset="0s",
+    #             start="0s",
+    #             duration=video_duration,
+    #         )
+    #         if video_path
+    #         else spine
+    #     )
+
+    #     # -----------------------------------------------------
+    #     # Add markers ONLY if segments exist
+    #     # -----------------------------------------------------
+    #     for seg in segments:
+    #         seg_id = seg.get("id", "")
+    #         start = float(seg.get("start", 0))
+    #         end = float(seg.get("end", start))
+    #         text = seg.get("eventValue", "")
+    #         event_type = seg.get("sdnaEventType", "")
+
+    #         ET.SubElement(
+    #             asset_clip,
+    #             "marker",
+    #             id=seg_id,
+    #             start=self._seconds_to_fcpx_time(start),
+    #             end=self._seconds_to_fcpx_time(end),
+    #             duration=self._seconds_to_fcpx_time(max(end - start, 0)),
+    #             sdnaEventType=event_type,
+    #             value=text,
+    #         )
+
+    #     # -----------------------------------------------------
+    #     # Write XML
+    #     # -----------------------------------------------------
+    #     pretty_xml = self._prettify_xml(fcpxml)
+    #     logger.info(f"Generated transcript fcpxml : filepath={filepath}")
+    #     logger.info("--------------------------------------------------")
+    #     with open(filepath, "w", encoding="utf-8") as f:
+    #         f.write(pretty_xml)
+
+    #     return filepath
     def generate_transcript_fcpxml(self, transcript_data: Dict) -> Path:
-        """Generate FCPXML for transcript (segments optional)."""
+        """Generate XMEML (FCP7/Premiere) XML for transcript (segments optional)."""
         segments: List[Dict] = transcript_data.get("segments", [])
+
         # ---------------------------------------------
         # Get optional video path
         # ---------------------------------------------
         video_path = segments[0].get("fullPath") if segments else None
-        video_path = r"D:\SDNA\AI_Spark\test\36_celebraties.mp4"  
+        video_path = r"D:\SDNA\AI_Spark\test\36_celebraties.mp4"
         meta = None
         if os.path.exists(video_path):
             meta = self._get_video_metadata(video_path)
-
-            frame_duration = self._fps_to_frame_duration(meta["fps"])
-            video_duration = self._seconds_to_fcpx_time(meta["duration"])
+            # fps may be an int, float, or fraction string like '25/1' or '30000/1001'
+            raw_fps = meta["fps"]
+            if isinstance(raw_fps, str) and "/" in raw_fps:
+                num, den = raw_fps.split("/")
+                fps = round(int(num) / int(den))
+            else:
+                fps = round(float(raw_fps))
+            duration_frames = int(meta["duration"] * fps)
             width = str(meta["width"])
             height = str(meta["height"])
         else:
-            # ---------------------------------------------
-            # Safe fallback when NO segments or NO video
-            # ---------------------------------------------
-            frame_duration = "1/25s"
-
+            fps = 25
             if segments:
                 duration_seconds = max(float(seg["end"]) for seg in segments)
             else:
-                duration_seconds = 1  # minimal valid duration
-
-            video_duration = self._seconds_to_fcpx_time(duration_seconds)
+                duration_seconds = 1
+            duration_frames = int(duration_seconds * fps)
             width = "1920"
             height = "1080"
+
+        # Helper: convert seconds → frames
+        def seconds_to_frames(seconds: float) -> int:
+            return int(round(float(seconds) * fps))
 
         # ---------------------------------------------
         # File path
         # ---------------------------------------------
-        filename = "sdna_ai_spark_transcript.fcpxml"
+        filename = "sdna_ai_spark_transcript.xml"
         event_dir = self.export_dir / "transcript"
         event_dir.mkdir(parents=True, exist_ok=True)
         filepath = event_dir / filename
 
-        # -----------------------------------------------------
-        # Root
-        # -----------------------------------------------------
-        fcpxml = ET.Element("fcpxml", version="1.10")
+        video_filename = Path(video_path).name if video_path else "video.mp4"
 
-        # -----------------------------------------------------
-        # Resources
-        # -----------------------------------------------------
-        resources = ET.SubElement(fcpxml, "resources")
-
-        ET.SubElement(
-            resources,
-            "format",
-            id="r1",
-            name=f"FFVideoFormat{height}p",
-            frameDuration=frame_duration,
-            width=width,
-            height=height,
-        )
-
+        # Convert file path to file URL (cross-platform)
         if video_path:
-            ET.SubElement(
-                resources,
-                "asset",
-                id="r2",
-                name=Path(video_path).name,
-                src=video_path,
-                start="0s",
-                duration=video_duration,
-                hasVideo="1",
-                hasAudio="1",
-                format="r1",
-            )
+            pathurl = Path(video_path).as_uri()  # e.g. file:///D:/SDNA/.../36_celebraties.mp4
+        else:
+            pathurl = ""
 
         # -----------------------------------------------------
-        # Library structure
+        # Build XML tree
         # -----------------------------------------------------
-        library = ET.SubElement(fcpxml, "library")
-        event = ET.SubElement(library, "event", name="AI transcript Event")
-        project = ET.SubElement(event, "project", name="AI transcript Project")
+        xmeml = ET.Element("xmeml", version="4")
+        sequence = ET.SubElement(xmeml, "sequence")
 
-        sequence = ET.SubElement(
-            project,
-            "sequence",
-            duration=video_duration,
-            format="r1",
-        )
+        ET.SubElement(sequence, "n").text = "AI Events Project"
+        ET.SubElement(sequence, "duration").text = str(duration_frames)
 
-        spine = ET.SubElement(sequence, "spine")
+        def add_rate(parent, timebase=None, ntsc="FALSE"):
+            rate = ET.SubElement(parent, "rate")
+            ET.SubElement(rate, "timebase").text = str(timebase or fps)
+            ET.SubElement(rate, "ntsc").text = ntsc
 
-        # asset-clip only if video exists
-        asset_clip = (
-            ET.SubElement(
-                spine,
-                "asset-clip",
-                name="video",
-                ref="r2",
-                offset="0s",
-                start="0s",
-                duration=video_duration,
-            )
-            if video_path
-            else spine
-        )
+        add_rate(sequence)
 
-        # -----------------------------------------------------
-        # Add markers ONLY if segments exist
-        # -----------------------------------------------------
+        # Timecode
+        timecode = ET.SubElement(sequence, "timecode")
+        add_rate(timecode)
+        ET.SubElement(timecode, "string").text = "00:00:00:00"
+        ET.SubElement(timecode, "frame").text = "0"
+        ET.SubElement(timecode, "displayformat").text = "NDF"
+
+        # Media
+        media = ET.SubElement(sequence, "media")
+
+        # ---- Video track ----
+        video = ET.SubElement(media, "video")
+        fmt = ET.SubElement(video, "format")
+        samplechar = ET.SubElement(fmt, "samplecharacteristics")
+        add_rate(samplechar)
+        ET.SubElement(samplechar, "width").text = width
+        ET.SubElement(samplechar, "height").text = height
+        ET.SubElement(samplechar, "pixelaspectratio").text = "square"
+        ET.SubElement(samplechar, "fielddominance").text = "none"
+
+        track_v = ET.SubElement(video, "track")
+        clipitem_v = ET.SubElement(track_v, "clipitem", id="clipitem-1")
+        ET.SubElement(clipitem_v, "n").text = video_filename
+        ET.SubElement(clipitem_v, "duration").text = str(duration_frames)
+        add_rate(clipitem_v)
+        ET.SubElement(clipitem_v, "start").text = "0"
+        ET.SubElement(clipitem_v, "end").text = str(duration_frames)
+        ET.SubElement(clipitem_v, "in").text = "0"
+        ET.SubElement(clipitem_v, "out").text = str(duration_frames)
+
+        # File reference
+        file_elem = ET.SubElement(clipitem_v, "file", id="file-1")
+        ET.SubElement(file_elem, "n").text = video_filename
+        ET.SubElement(file_elem, "pathurl").text = pathurl
+        add_rate(file_elem)
+        ET.SubElement(file_elem, "duration").text = str(duration_frames)
+        file_media = ET.SubElement(file_elem, "media")
+        file_video = ET.SubElement(file_media, "video")
+        file_samplechar = ET.SubElement(file_video, "samplecharacteristics")
+        add_rate(file_samplechar)
+        ET.SubElement(file_samplechar, "width").text = width
+        ET.SubElement(file_samplechar, "height").text = height
+        file_audio = ET.SubElement(file_media, "audio")
+        file_audio_sc = ET.SubElement(file_audio, "samplecharacteristics")
+        ET.SubElement(file_audio_sc, "depth").text = "16"
+        ET.SubElement(file_audio_sc, "samplerate").text = "48000"
+
+        # ---- Markers ----
         for seg in segments:
-            seg_id = seg.get("id", "")
-            start = float(seg.get("start", 0))
-            end = float(seg.get("end", start))
-            text = seg.get("eventValue", "")
+            start_frame = seconds_to_frames(float(seg.get("start", 0)))
+            end_frame = seconds_to_frames(float(seg.get("end", seg.get("start", 0))))
             event_type = seg.get("sdnaEventType", "")
+            text = seg.get("eventValue", "")
 
-            ET.SubElement(
-                asset_clip,
-                "marker",
-                id=seg_id,
-                start=self._seconds_to_fcpx_time(start),
-                end=self._seconds_to_fcpx_time(end),
-                duration=self._seconds_to_fcpx_time(max(end - start, 0)),
-                sdnaEventType=event_type,
-                value=text,
+            marker_label = f"[{event_type}] {text}" if event_type else text
+
+            marker = ET.SubElement(clipitem_v, "marker")
+            ET.SubElement(marker, "n").text = marker_label
+            ET.SubElement(marker, "in").text = str(start_frame)
+            ET.SubElement(marker, "out").text = str(end_frame)
+
+        # ---- Audio tracks ----
+        audio = ET.SubElement(media, "audio")
+        for track_index in [1, 2]:
+            clip_id = f"clipitem-{track_index + 1}"
+            track_a = ET.SubElement(audio, "track")
+            clipitem_a = ET.SubElement(track_a, "clipitem", id=clip_id)
+            ET.SubElement(clipitem_a, "n").text = video_filename
+            ET.SubElement(clipitem_a, "duration").text = str(duration_frames)
+            add_rate(clipitem_a)
+            ET.SubElement(clipitem_a, "start").text = "0"
+            ET.SubElement(clipitem_a, "end").text = str(duration_frames)
+            ET.SubElement(clipitem_a, "in").text = "0"
+            ET.SubElement(clipitem_a, "out").text = str(duration_frames)
+            ET.SubElement(clipitem_a, "file", id="file-1")  # reference only
+            sourcetrack = ET.SubElement(clipitem_a, "sourcetrack")
+            ET.SubElement(sourcetrack, "mediatype").text = "audio"
+            ET.SubElement(sourcetrack, "trackindex").text = str(track_index)
+
+        # -----------------------------------------------------
+        # Write XML with DOCTYPE declaration
+        # -----------------------------------------------------
+        pretty_xml = self._prettify_xml(xmeml)
+
+        # Inject DOCTYPE after the XML declaration
+        xml_declaration = '<?xml version="1.0" encoding="UTF-8"?>'
+        doctype = "<!DOCTYPE xmeml>"
+        if pretty_xml.startswith("<?xml"):
+            pretty_xml = pretty_xml.replace(
+                xml_declaration,
+                f"{xml_declaration}\n{doctype}",
+                1,
             )
+        else:
+            pretty_xml = f"{xml_declaration}\n{doctype}\n{pretty_xml}"
 
-        # -----------------------------------------------------
-        # Write XML
-        # -----------------------------------------------------
-        pretty_xml = self._prettify_xml(fcpxml)
-        logger.info(f"Generated transcript fcpxml : filepath={filepath}")
+        logger.info(f"Generated transcript xmeml : filepath={filepath}")
         logger.info("--------------------------------------------------")
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(pretty_xml)

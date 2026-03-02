@@ -1,0 +1,128 @@
+2026-03-02 17:52:48 | INFO | ai-spark | Starting AI Spark API : 1.0.0
+2026-03-02 17:52:48 | INFO | ai-spark | SQLite DB path : ai_spark.db
+2026-03-02 17:52:48 | INFO | ai-spark | SQLite database initialised and tables created
+2026-03-02 17:52:48 | INFO | ai-spark | 
+2026-03-02 17:53:00 | INFO | ai-spark | -------------------------------  VIDEO SPLIT JOB -------------------------------
+2026-03-02 17:53:00 | INFO | ai-spark | 
+2026-03-02 17:53:00 | INFO | ai-spark | Received video split work order : repo_guid=repo-123
+2026-03-02 17:53:00 | INFO | ai-spark | Creating video split job for repo_guid=repo-123
+2026-03-02 17:53:00 | INFO | ai-spark | Created video split job : split_job_id=a9d343d2-a03d-47da-b521-43cbb3ac8ef5
+2026-03-02 17:53:00 | INFO | ai-spark | Starting video split processing : split_job_id=a9d343d2-a03d-47da-b521-43cbb3ac8ef5
+2026-03-02 17:53:00 | INFO | ai-spark | Retrieved video duration: filepath=D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4, duration=600.0
+2026-03-02 17:53:00 | WARNING | ai-spark | No segments found in MongoDB for : repo_guid=repo-123
+2026-03-02 17:53:01 | ERROR | ai-spark | FFmpeg failed: ffmpeg version N-121623-gf5eb11a71d-20251103 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)
+  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20251103
+  libavutil      60. 16.100 / 60. 16.100
+  libavcodec     62. 19.100 / 62. 19.100
+  libavformat    62.  6.101 / 62.  6.101
+  libavdevice    62.  2.100 / 62.  2.100
+  libavfilter    11.  9.100 / 11.  9.100
+  libswscale      9.  3.100 /  9.  3.100
+  libswresample   6.  2.100 /  6.  2.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf58.76.100
+  Duration: 00:10:00.00, start: 0.000000, bitrate: 1659 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1280x720 [SAR 1:1 DAR 16:9], 1522 kb/s, 50 fps, 50 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : ISO Media file produced by Google Inc.
+      vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 127 kb/s (default)
+    Metadata:
+      handler_name    : SoundHandler
+      vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> h264 (libx264))
+  Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+Press [q] to stop, [?] for help
+[Parsed_crop_0 @ 0000020e550fcd80] Invalid too big or non positive size for width '1920' or height '1080'
+[Parsed_crop_0 @ 0000020e550fcd80] Failed to configure input pad on Parsed_crop_0
+[vf#0:0 @ 0000020e550fb2c0] Error reinitializing filters!
+[vf#0:0 @ 0000020e550fb2c0] Task finished with error code: -22 (Invalid argument)
+[vf#0:0 @ 0000020e550fb2c0] Terminating thread with return code -22 (Invalid argument)
+[vost#0:0/libx264 @ 0000020e55143b00] [enc:libx264 @ 0000020e5728d940] Could not open encoder before EOF
+[vost#0:0/libx264 @ 0000020e55143b00] Task finished with error code: -22 (Invalid argument)
+[vost#0:0/libx264 @ 0000020e55143b00] Terminating thread with return code -22 (Invalid argument)
+[out#0/mp4 @ 0000020e550fd3c0] Nothing was written into output file, because at least one of its streams received no packets.
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.03    
+[aac @ 0000020e56db1100] Qavg: 189.452
+Conversion failed!
+
+2026-03-02 17:53:01 | ERROR | ai-spark | Artifact filepath is missing : artifact_type=video_resized , format=mp4 , export_id=a9d343d2-a03d-47da-b521-43cbb3ac8ef5
+2026-03-02 17:53:01 | ERROR | ai-spark | Video resize failed: split_job_id=a9d343d2-a03d-47da-b521-43cbb3ac8ef5, error='NoneType' object has no attribute 'stat'
+2026-03-02 17:53:01 | INFO | ai-spark | Zip File Path Generated : D:\SDNA\AI_Spark\final_op\videos\a9d343d2-a03d-47da-b521-43cbb3ac8ef5\a9d343d2-a03d-47da-b521-43cbb3ac8ef5.zip
+2026-03-02 17:53:01 | INFO | ai-spark | Video split processing completed : split_job_id=a9d343d2-a03d-47da-b521-43cbb3ac8ef5 , successful=0 , failed=1
+2026-03-02 17:53:01 | INFO | ai-spark | ***************************************************************************************************************************
+2026-03-02 17:54:30 | INFO | ai-spark | -------------------------------  VIDEO SPLIT JOB -------------------------------
+2026-03-02 17:54:30 | INFO | ai-spark | 
+2026-03-02 17:54:30 | INFO | ai-spark | Received video split work order : repo_guid=repo-123
+2026-03-02 17:54:30 | INFO | ai-spark | Creating video split job for repo_guid=repo-123
+2026-03-02 17:54:30 | INFO | ai-spark | Created video split job : split_job_id=2426810b-068e-4686-9f14-a1483da736a4
+2026-03-02 17:54:30 | INFO | ai-spark | Starting video split processing : split_job_id=2426810b-068e-4686-9f14-a1483da736a4
+2026-03-02 17:54:30 | INFO | ai-spark | Retrieved video duration: filepath=D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4, duration=600.0
+2026-03-02 17:54:30 | WARNING | ai-spark | No segments found in MongoDB for : repo_guid=repo-123
+2026-03-02 17:54:31 | ERROR | ai-spark | FFmpeg failed: ffmpeg version N-121623-gf5eb11a71d-20251103 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)
+  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20251103
+  libavutil      60. 16.100 / 60. 16.100
+  libavcodec     62. 19.100 / 62. 19.100
+  libavformat    62.  6.101 / 62.  6.101
+  libavdevice    62.  2.100 / 62.  2.100
+  libavfilter    11.  9.100 / 11.  9.100
+  libswscale      9.  3.100 /  9.  3.100
+  libswresample   6.  2.100 /  6.  2.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf58.76.100
+  Duration: 00:10:00.00, start: 0.000000, bitrate: 1659 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1280x720 [SAR 1:1 DAR 16:9], 1522 kb/s, 50 fps, 50 tbr, 12800 tbn (default)
+    Metadata:
+      handler_name    : ISO Media file produced by Google Inc.
+      vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 127 kb/s (default)
+    Metadata:
+      handler_name    : SoundHandler
+      vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> h264 (libx264))
+  Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+Press [q] to stop, [?] for help
+[Parsed_crop_0 @ 0000022b5ae9cfc0] Invalid too big or non positive size for width '720' or height '1280'
+[Parsed_crop_0 @ 0000022b5ae9cfc0] Failed to configure input pad on Parsed_crop_0
+[vf#0:0 @ 0000022b5d19d040] Error reinitializing filters!
+[vf#0:0 @ 0000022b5d19d040] Task finished with error code: -22 (Invalid argument)
+[vf#0:0 @ 0000022b5d19d040] Terminating thread with return code -22 (Invalid argument)
+[vost#0:0/libx264 @ 0000022b5cdc1380] [enc:libx264 @ 0000022b5d05d3c0] Could not open encoder before EOF
+[vost#0:0/libx264 @ 0000022b5cdc1380] Task finished with error code: -22 (Invalid argument)
+[vost#0:0/libx264 @ 0000022b5cdc1380] Terminating thread with return code -22 (Invalid argument)
+[out#0/mp4 @ 0000022b5ae9c500] Nothing was written into output file, because at least one of its streams received no packets.
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.04    
+[aac @ 0000022b5ccfbec0] Qavg: 205.217
+Conversion failed!
+
+2026-03-02 17:54:31 | ERROR | ai-spark | Artifact filepath is missing : artifact_type=video_resized , format=mp4 , export_id=2426810b-068e-4686-9f14-a1483da736a4
+2026-03-02 17:54:31 | ERROR | ai-spark | Video resize failed: split_job_id=2426810b-068e-4686-9f14-a1483da736a4, error='NoneType' object has no attribute 'stat'
+2026-03-02 17:54:31 | INFO | ai-spark | Zip File Path Generated : D:\SDNA\AI_Spark\final_op\videos\2426810b-068e-4686-9f14-a1483da736a4\2426810b-068e-4686-9f14-a1483da736a4.zip
+2026-03-02 17:54:31 | INFO | ai-spark | Video split processing completed : split_job_id=2426810b-068e-4686-9f14-a1483da736a4 , successful=0 , failed=1
+2026-03-02 17:54:31 | INFO | ai-spark | ***************************************************************************************************************************
+2026-03-02 17:55:13 | INFO | ai-spark | -------------------------------  VIDEO SPLIT JOB -------------------------------
+2026-03-02 17:55:13 | INFO | ai-spark | 
+2026-03-02 17:55:13 | INFO | ai-spark | Received video split work order : repo_guid=repo-123
+2026-03-02 17:55:13 | INFO | ai-spark | Creating video split job for repo_guid=repo-123
+2026-03-02 17:55:13 | INFO | ai-spark | Created video split job : split_job_id=e5f72478-99cf-4dc1-a8aa-69e02f9e54db
+2026-03-02 17:55:13 | INFO | ai-spark | Starting video split processing : split_job_id=e5f72478-99cf-4dc1-a8aa-69e02f9e54db
+2026-03-02 17:55:13 | INFO | ai-spark | Retrieved video duration: filepath=D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4, duration=600.0
+2026-03-02 17:55:13 | WARNING | ai-spark | No segments found in MongoDB for : repo_guid=repo-123
+2026-03-02 18:00:01 | INFO | ai-spark | Video resized successfully: 720x1280, split_job_id=e5f72478-99cf-4dc1-a8aa-69e02f9e54db
+2026-03-02 18:00:04 | INFO | ai-spark | Zip File Path Generated : D:\SDNA\AI_Spark\final_op\videos\e5f72478-99cf-4dc1-a8aa-69e02f9e54db\e5f72478-99cf-4dc1-a8aa-69e02f9e54db.zip
+2026-03-02 18:00:04 | INFO | ai-spark | Video split processing completed : split_job_id=e5f72478-99cf-4dc1-a8aa-69e02f9e54db , successful=1 , failed=0
+2026-03-02 18:00:04 | INFO | ai-spark | ***************************************************************************************************************************
+2026-03-02 18:02:58 | INFO | ai-spark | Shutting down AI Spark API
+2026-03-02 18:02:58 | INFO | ai-spark | SQLite engine disposed

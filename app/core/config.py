@@ -54,7 +54,7 @@ class Settings(BaseSettings):
 
     # Fabric Integration Settings
     FABRIC_API_URL: str = "http://192.168.0.50:4080"
-    FABRIC_API_KEY: str = "$2b$10$JGCRHRqAqk6nry/nYj5poHiKImJXeAtSZ8cpO"
+    FABRIC_API_KEY: str = "$2b$10$JGCRHRqAqk6n"
     FABRIC_API_TIMEOUT: int = 30
 
     # CORS Settings
