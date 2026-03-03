@@ -51,7 +51,7 @@ class Asset(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 class ImportWorkOrder(BaseModel):
-    schemaVersion: Literal["sdna.spark.import.v1"]
+    schemaVersion: str = Field(default="1.0")
     asset: Asset
     highlights: List[Highlight]
 

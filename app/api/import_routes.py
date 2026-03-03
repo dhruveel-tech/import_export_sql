@@ -85,8 +85,9 @@ async def create_import(
     try:
         # ✅ Read highlights JSON from uploaded file
         file_content = await file.read()
-        highlights_list = json.loads(file_content.decode("utf-8"))
-
+        highlights = json.loads(file_content.decode("utf-8"))
+        highlights_list = highlights.get("segments", [])
+        
         parsed_work_order = ImportWorkOrder(
             schemaVersion=schemaVersion,
             asset={
@@ -99,7 +100,7 @@ async def create_import(
 
         # Queue background processing only if validation succeeded
         if job and job.status != "failed":
-            background_tasks.add_task(process_import_background_for_llm, str(job.import_id))
+            background_tasks.add_task(process_import_background_for_llm, str(job.import_id), highlights_list)
 
         return job
 

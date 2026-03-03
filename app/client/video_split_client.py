@@ -183,16 +183,18 @@ class VideoSplitClient:
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        scale_filter = f"scale={width}:{height}:force_original_aspect_ratio={keep_aspect}"
-        vf_filter = scale_filter + (f",pad={width}:{height}:(ow-iw)/2:(oh-ih)/2" if pad else "")
-
-        if video_codec == "copy":
-            raise ValueError("Cannot use video filters when video_codec='copy'")
+        vf_filter = (
+            f"crop=ih*16/9:ih:(iw-ow)/2:0,"
+            f"scale={width}:{height}"
+        )
 
         ffmpeg_cmd = [
-            "ffmpeg", "-y", "-i", str(video_path),
+            "ffmpeg", "-y",
+            "-i", str(video_path),
             "-vf", vf_filter,
-            "-c:v", video_codec, "-preset", preset, "-crf", str(crf),
+            "-c:v", video_codec,
+            "-preset", preset,
+            "-crf", str(crf),
             "-c:a", audio_codec,
             str(output_file),
         ]

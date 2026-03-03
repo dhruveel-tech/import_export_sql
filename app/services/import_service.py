@@ -56,18 +56,18 @@ class ImportService:
                 session.add(job)
                 await session.flush()  # get PK before adding highlights
 
-                # Insert highlights
-                for h in work_order.highlights:
-                    h_obj = h if isinstance(h, Highlight) else Highlight(**h)
-                    highlight = ImportHighlight(
-                        import_id=import_id,
-                        insight=h_obj.insight,
-                        start=h_obj.start,
-                        end=h_obj.end,
-                        confidence_score=h_obj.confidenceScore if h_obj.confidenceScore is not None else 0,
-                        event_meta=json.dumps(h_obj.eventMeta.model_dump() if h_obj.eventMeta else None),
-                    )
-                    session.add(highlight)
+                # # Insert highlights
+                # for h in work_order.highlights:
+                #     h_obj = h if isinstance(h, Highlight) else Highlight(**h)
+                #     highlight = ImportHighlight(
+                #         import_id=import_id,
+                #         insight=h_obj.insight,
+                #         start=h_obj.start,
+                #         end=h_obj.end,
+                #         confidence_score=h_obj.confidenceScore if h_obj.confidenceScore is not None else 0,
+                #         event_meta=json.dumps(h_obj.eventMeta.model_dump() if h_obj.eventMeta else None),
+                #     )
+                #     session.add(highlight)
 
                 await session.commit()
                 await session.refresh(job)

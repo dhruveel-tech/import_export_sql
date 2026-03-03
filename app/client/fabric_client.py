@@ -1,6 +1,7 @@
 """
 Fabric Data Client - Direct MongoDB Integration
 """
+import os
 from typing import Dict, List, Any, Optional
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -181,68 +182,67 @@ class FabricClient:
                 return {"created": 0, "updated": 0, "skipped": 0, "total": 0}
 
             url = f"{settings.FABRIC_API_URL}/catalogs/aiEnrichedMetadata/insights/llm/add"
-            file_name = full_path.split("/")[-1] if full_path else ""
+            file_name = os.path.basename(full_path) if full_path else ""
             headers = {"apiKey": settings.FABRIC_API_KEY}
 
             BATCH_SIZE = 500
 
             async with httpx.AsyncClient(timeout=settings.FABRIC_API_TIMEOUT) as client:
-                for i in range(0, len(highlights), BATCH_SIZE):
-                    batch = highlights[i : i + BATCH_SIZE]
+                # for i in range(0, len(highlights), BATCH_SIZE):
+                #     batch = highlights[i : i + BATCH_SIZE]
 
-                    custom_events = []
+                #     custom_events = []
 
-                    for h in batch:
-                        try:
-                            custom_events.append(
-                                {
-                                    "insight": h.get("insight", ""),
-                                    "start": float(h.get("start", 0)),
-                                    "end": float(h.get("end", 0)),
-                                    "confidenceScore": float(h.get("confidenceScore", 0)),
-                                    "eventMeta": {
-                                        "associatedEventIds": (
-                                            h.get("eventMeta") or {}
-                                        ).get("associatedEventIds", [])
-                                    },
-                                }
-                            )
-                        except Exception as e:
-                            skipped_count += 1
-                            logger.exception(
-                                "Failed to parse highlight event, skipping. Error: %s", e
-                            )
+                #     for h in batch:
+                #         try:
+                #             custom_events.append(
+                #                 {
+                #                     "insight": h.get("insight", ""),
+                #                     "start": float(h.get("start", 0)),
+                #                     "end": float(h.get("end", 0)),
+                #                     "confidenceScore": float(h.get("confidenceScore", 0)),
+                #                     "eventMeta": {
+                #                         "associatedEventIds": (
+                #                             h.get("eventMeta") or {}
+                #                         ).get("associatedEventIds", [])
+                #                     },
+                #                 }
+                #             )
+                #         except Exception as e:
+                #             skipped_count += 1
+                #             logger.exception(
+                #                 "Failed to parse highlight event, skipping. Error: %s", e
+                #             )
 
-                    if not custom_events:
-                        continue
+                #     if not custom_events:
+                #         continue
 
-                    node_payload = {
-                        "repoGuid": repo_guid,
-                        "fullPath": full_path,
-                        "fileName": file_name,
-                        "insightEvents": custom_events,
-                    }
+                node_payload = {
+                    "repoGuid": repo_guid,
+                    "fullPath": full_path,
+                    "fileName": file_name,
+                    "insightEvents": highlights,
+                }
+                try:
+                    response = await client.post(
+                        url, json=node_payload, headers=headers
+                    )
 
-                    try:
-                        response = await client.post(
-                            url, json=node_payload, headers=headers
+                    if response.is_success:
+                        created_count += len(highlights)
+                        status_msg = "success"
+                    else:
+                        skipped_count += len(highlights)
+                        status_msg = (
+                            f"Node API failure: "
+                            f"status={response.status_code}, body={response.text}"
                         )
+                        logger.error(status_msg)
 
-                        if response.is_success:
-                            created_count += len(custom_events)
-                            status_msg = "success"
-                        else:
-                            skipped_count += len(custom_events)
-                            status_msg = (
-                                f"Node API failure: "
-                                f"status={response.status_code}, body={response.text}"
-                            )
-                            logger.error(status_msg)
-
-                    except httpx.HTTPError as e:
-                        skipped_count += len(custom_events)
-                        status_msg = f"HTTP error during Node API call: {str(e)}"
-                        logger.exception(status_msg)
+                except httpx.HTTPError as e:
+                    skipped_count += len(highlights)
+                    status_msg = f"HTTP error during Node API call: {str(e)}"
+                    logger.exception(status_msg)
 
             logger.info(
                 "LLM highlights sent to Node API: created=%s, skipped=%s",

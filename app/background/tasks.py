@@ -82,14 +82,14 @@ async def process_export_background(export_id: str):
 
         artifacts = []
         outputs = work_order.get("outputs", {})
-        inputs = work_order.get("inputs", {})
-        is_single_segment = outputs.get("transcript", {}).get("isSingleSegment", False)
+        inputs = work_order.get("inputs", {})            
         user_prompt = work_order.get("user_inputs", {}).get("prompt")
         llm_instructions = work_order.get("user_inputs", {}).get("llm_instructions", True)
         error_msg = []
 
         # TRANSCRIPT
         if outputs.get("transcript"):
+            is_single_segment = outputs.get("transcript", {}).get("isSingleSegment", False)
             transcript_data = await fabric_client.get_transcript(repo_guid, inputs)
             if transcript_data:
                 for fmt in outputs["transcript"]["formats"]:
@@ -195,7 +195,7 @@ async def process_export_background(export_id: str):
 # IMPORT
 # ---------------------------------------------------------------------------
 
-async def process_import_background_for_llm(import_id: str):
+async def process_import_background_for_llm(import_id: str, highlights_list: List[Dict]):
     """Process LLM highlight import job in background safely."""
     logger.info(f"Starting LLM import processing : import_id={import_id}")
 
@@ -236,33 +236,19 @@ async def process_import_background_for_llm(import_id: str):
 
         # Stream highlights in batches from SQLite
         offset = 0
-        while True:
-            async with AsyncSessionLocal() as session:
-                result = await session.execute(
-                    select(ImportHighlight)
-                    .where(ImportHighlight.import_id == import_id)
-                    .offset(offset)
-                    .limit(BATCH_SIZE)
-                )
-                highlights = result.scalars().all()
+        for offset in range(0, len(highlights_list), BATCH_SIZE):
+            batch = highlights_list[offset:offset + BATCH_SIZE]
 
-            if not highlights:
-                break
-
-            batch = [h.to_dict() for h in highlights]
             result = await fabric_client.ingest_llm_highlights(
                 repo_guid=asset["repo_guid"],
                 full_path=asset["fullPath"],
                 highlights=batch,
             )
+
             items_created += result.get("created", 0)
             items_updated += result.get("updated", 0)
             items_skipped += result.get("skipped", 0)
             error_msg = result.get("error_msg", "") if result.get("error_msg", "") != "success" else None
-
-            offset += BATCH_SIZE
-            if len(highlights) < BATCH_SIZE:
-                break
 
         # Mark COMPLETED
         async with AsyncSessionLocal() as session:
@@ -454,7 +440,6 @@ async def process_video_split_task(split_job_id: str):
                     output_path=str(output_path),
                     width=width,
                     height=height,
-                    crop_position="center",
                     video_codec="libx264",
                     audio_codec="aac",
                     crf=23,

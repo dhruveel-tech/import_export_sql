@@ -42,9 +42,9 @@ class Settings(BaseSettings):
     SQLITE_DB_PATH: str = "ai_spark.db"
 
     # Storage Settings
-    EXPORT_BASE_PATH: str = "D:\\SDNA\\AI_Spark\\sdna_task\\exports"
-    EXPORT_VIDEO_SPIT_PATH: str = "D:\\SDNA\\AI_Spark\\sdna_task\\videos"
-    IMPORT_BASE_PATH: str = "D:\\SDNA\\AI_Spark\\sdna_task\\imports"
+    EXPORT_BASE_PATH: str = "/sdna_fs/ADMINISTRATORDROPBOX/primary/SparkOutput/exports"
+    EXPORT_VIDEO_SPIT_PATH: str = "/sdna_fs/ADMINISTRATORDROPBOX/primary/SparkOutput/videos"
+    IMPORT_BASE_PATH: str = "/sdna_fs/ADMINISTRATORDROPBOX/primary/SparkOutput/imports"
     MAX_UPLOAD_SIZE: int = 5_368_709_120  # 5GB
     ALLOWED_IMPORT_FORMATS: str = "json,csv"
 
@@ -53,8 +53,8 @@ class Settings(BaseSettings):
     EXPORT_URL_PREFIX : str ="https://enginex.example.com/exports"
 
     # Fabric Integration Settings
-    FABRIC_API_URL: str = "http://192.168.0.50:4080"
-    FABRIC_API_KEY: str = "$2b$10$JGCRHRqAqk6n"
+    FABRIC_API_URL: str = "http://205.209.96.190:5080"
+    FABRIC_API_KEY: str = "$2b$10$JGCRHRqAqknHaISQ2u9V3upi346nry/nYj5poHiKImJXeAtSZ8cpO"
     FABRIC_API_TIMEOUT: int = 30
 
     # CORS Settings

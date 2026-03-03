@@ -39,7 +39,7 @@ class ExportInputs(BaseModel):
 
 class UserInputs(BaseModel):
     """User input configuration for export."""
-    prompt: Optional[str] = None
+    prompt: Optional[str] = Field(..., min_length=1)
     llm_instructions: Optional[bool] = True 
 
 class ExportOutputs(BaseModel):
