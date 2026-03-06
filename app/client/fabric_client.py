@@ -49,12 +49,22 @@ class FabricClient:
             col = self._collection(settings.MONGODB_COLLECTION_NAME_FOR_GET_DATA)
 
             transcript_ids = inputs.get("event_ids", []) if inputs else []
-
+            full_path = inputs.get("full_path", "") if inputs else ""
+            is_all_transcript = False
+            source_path = inputs.get("source_path", "") if inputs else ""
+            
+            if inputs and inputs.get("is_all") and isinstance(inputs["is_all"], dict):
+                is_all_transcript = inputs["is_all"].get("is_all_transcript", False)
+                
             query: Dict[str, Any] = {"sdnaEventType": "transcript"}
-
-            if transcript_ids:
+                
+            if is_all_transcript:
+                query["repoGuid"] = repo_guid
+                query["fullPath"] = source_path
+                
+            elif transcript_ids:
                 query["_id"] = {"$in": [self._to_object_id(i) for i in transcript_ids]}
-
+            
             cursor = col.find(query)
 
             segments: List[Dict] = []
@@ -66,7 +76,7 @@ class FabricClient:
                         "eventValue": item.get("eventValue", ""),
                         "start": item.get("start", 0),
                         "end": item.get("end", 0),
-                        "fullPath": item.get("fullPath", ""),
+                        "fullPath": full_path,
                     }
                 )
 
@@ -75,7 +85,7 @@ class FabricClient:
                 return None
 
             segments.sort(key=lambda x: x["start"])
-
+            logger.info("--------------------------------------------------")
             logger.info(f"Transcript fetched successfully for : repo_guid={repo_guid}, count={len(segments)}")
 
             return {"repo_guid": repo_guid, "segments": segments}
@@ -88,11 +98,21 @@ class FabricClient:
         try:
             query: Dict[str, Any] = {}
             col = self._collection(settings.MONGODB_COLLECTION_NAME_FOR_GET_DATA)
-
+            full_path = inputs.get("full_path", "") if inputs else ""
             ids = inputs.get("event_ids", []) if inputs else []
+            source_path = inputs.get("source_path", "") if inputs else ""
+            is_all_events = False
+            
+            if inputs and inputs.get("is_all") and isinstance(inputs["is_all"], dict):
+                is_all_events = inputs["is_all"].get("is_all_events", False)
 
             query["sdnaEventType"] = {"$nin": ["transcript", "insight"]}
-            if ids:
+            
+            if is_all_events:
+                query["repoGuid"] = repo_guid
+                query["fullPath"] = source_path
+                
+            elif ids:
                 query["_id"] = {"$in": [self._to_object_id(i) for i in ids]}
 
             cursor = col.find(query)
@@ -108,7 +128,7 @@ class FabricClient:
                         "end": item.get("end", 0),
                         "confidenceScore": item.get("confidenceScore", 0.0),
                         "positions": item.get("positions", []),
-                        "fullPath": item.get("fullPath", ""),
+                        "fullPath": full_path,
                     }
                 )
 
@@ -127,12 +147,22 @@ class FabricClient:
             col = self._collection(settings.MONGODB_COLLECTION_NAME_FOR_GET_DATA)
             
             ids = inputs.get("event_ids", []) if inputs else []
-
+            full_path = inputs.get("full_path", "") if inputs else ""
+            is_all_insights = False
+            source_path = inputs.get("source_path", "") if inputs else ""
+            
+            if inputs and inputs.get("is_all") and isinstance(inputs["is_all"], dict):
+                is_all_insights = inputs["is_all"].get("is_all_insights", False)
+                
             query: Dict[str, Any] = {"sdnaEventType": "insight"}
 
-            if ids:
+            if is_all_insights:
+                query["repoGuid"] = repo_guid
+                query["fullPath"] = source_path
+                
+            elif ids:
                 query["_id"] = {"$in": [self._to_object_id(i) for i in ids]}
-
+            
             cursor = col.find(query)
 
             insights: List[Dict] = []
@@ -145,7 +175,7 @@ class FabricClient:
                         "start": item.get("start", 0),
                         "end": item.get("end", 0),
                         "source": item.get("source", ""),
-                        "fullPath": item.get("fullPath", ""),
+                        "fullPath": full_path,
                     }
                 )
 

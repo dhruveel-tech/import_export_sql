@@ -82,7 +82,7 @@ async def process_export_background(export_id: str):
 
         artifacts = []
         outputs = work_order.get("outputs", {})
-        inputs = work_order.get("inputs", {})            
+        inputs = work_order.get("inputs", {})           
         user_prompt = work_order.get("user_inputs", {}).get("prompt")
         llm_instructions = work_order.get("user_inputs", {}).get("llm_instructions", True)
         error_msg = []
@@ -91,7 +91,7 @@ async def process_export_background(export_id: str):
         if outputs.get("transcript"):
             is_single_segment = outputs.get("transcript", {}).get("isSingleSegment", False)
             transcript_data = await fabric_client.get_transcript(repo_guid, inputs)
-            if transcript_data:
+            if transcript_data and transcript_data.get('segments'):
                 for fmt in outputs["transcript"]["formats"]:
                     filepath, status_msg = _generate_transcript_artifact(generator, transcript_data, fmt, is_single_segment)
                     if status_msg != "Success":
@@ -101,31 +101,33 @@ async def process_export_background(export_id: str):
         # EVENTS
         if outputs.get("events"):
             events_data = await fabric_client.get_events(repo_guid, inputs)
-            for fmt in outputs["events"]["formats"]:
-                filepath, status_msg = _generate_events_artifact(generator, events_data, fmt)
-                if status_msg != "Success":
-                    error_msg.append(status_msg)
-                if filepath:
-                    artifacts.append(_create_artifact_record(filepath, "events", fmt, export_id))
+            if events_data and events_data.get('segments'):
+                for fmt in outputs["events"]["formats"]:
+                    filepath, status_msg = _generate_events_artifact(generator, events_data, fmt)
+                    if status_msg != "Success":
+                        error_msg.append(status_msg)
+                    if filepath:
+                        artifacts.append(_create_artifact_record(filepath, "events", fmt, export_id))
 
         # COMMENTS
         insights_data = None
         if outputs.get("insights"):
             insights_data = await fabric_client.get_insights(repo_guid, inputs)
-            for fmt in outputs["insights"]["formats"]:
-                filepath, status_msg = _generate_insights_artifact(generator, insights_data, fmt)
-                if status_msg != "Success":
-                    error_msg.append(status_msg)
-                if filepath:
-                    artifacts.append(_create_artifact_record(filepath, "insights", fmt, export_id))
+            if insights_data and insights_data.get('segments'):
+                for fmt in outputs["insights"]["formats"]:
+                    filepath, status_msg = _generate_insights_artifact(generator, insights_data, fmt)
+                    if status_msg != "Success":
+                        error_msg.append(status_msg)
+                    if filepath:
+                        artifacts.append(_create_artifact_record(filepath, "insights", fmt, export_id))
 
         # SELECTS
-        if outputs.get("selects", {}).get("enabled"):
-            selects_data = _create_selects_from_comments_markers(insights_data or [])
-            for fmt in outputs["selects"]["formats"]:
-                if fmt == "edl":
-                    filepath = generator.generate_selects_edl(selects_data)
-                    artifacts.append(_create_artifact_record(filepath, "selects", fmt, export_id))
+        # if outputs.get("selects", {}).get("enabled"):
+        #     selects_data = _create_selects_from_comments_markers(insights_data or [])
+        #     for fmt in outputs["selects"]["formats"]:
+        #         if fmt == "edl":
+        #             filepath = generator.generate_selects_edl(selects_data)
+        #             artifacts.append(_create_artifact_record(filepath, "selects", fmt, export_id))
 
         # GROUNDING
         if outputs.get("grounding", {}).get("enabled"):
@@ -638,6 +640,9 @@ def _create_zip_from_folder(export_id: UUID, zip_base_folder_path: str) -> str:
             if file_path.is_file() and file_path != zip_path:
                 # Preserve internal structure
                 zipf.write(file_path, file_path.relative_to(export_folder))
+                
+    # zip_file_path = str(zip_path)
+    # main_zip_path = zip_path.relative_to("/mnt/AI-Shared-Drive-Demo")
 
     return str(zip_path)
     
@@ -667,7 +672,7 @@ def _create_artifact_record(filepath, artifact_type, fmt, export_id):
 
         filepath = Path(filepath)
         filename = filepath.name
-
+        # filepath = filepath.relative_to("/mnt/AI-Shared-Drive-Demo")
         try:
             file_size = filepath.stat().st_size if filepath.exists() else 0
         except Exception as fs_exc:

@@ -91,9 +91,9 @@ async def global_exception_handler(request, exc):
 
 
 # -------------------- Routers --------------------
-app.include_router(export_router, prefix="/spark/export", tags=["Export"])
-app.include_router(import_router, prefix="/spark/import", tags=["Import"])
-app.include_router(video_split_router, prefix="/spark/video_split", tags=["Video Split"])
+app.include_router(export_router, prefix="/ai/spark/export", tags=["Export"])
+app.include_router(import_router, prefix="/ai/spark/import", tags=["Import"])
+app.include_router(video_split_router, prefix="/ai/spark/video_split", tags=["Video Split"])
 
 
 # -------------------- Root endpoint --------------------

@@ -14,10 +14,11 @@ services:
       - ./app:/app/app
       - ./exports:/var/spark/exports
       - ./imports:/var/spark/imports
+      - D:/SDNA/AI_Spark/test:/mnt/videos
       - sqlite_data:/var/spark/db
     environment:
       - SQLITE_DB_PATH=/var/spark/db/ai_spark.db
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: python3 main.py
 
 volumes:
   sqlite_data:

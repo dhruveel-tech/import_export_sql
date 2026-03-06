@@ -33,9 +33,18 @@ class GroundingConfig(BaseModel):
     """Grounding prompt configuration."""
     enabled: bool = True
 
+class ExportAllData(BaseModel):
+    """Configuration to export all data types."""
+    is_all_transcript: bool = False
+    is_all_events: bool = False
+    is_all_insights: bool = False
+
 class ExportInputs(BaseModel):
     """Export input data selection."""
     event_ids: List[str] = Field(default_factory=list)
+    is_all: Optional[ExportAllData] = None 
+    full_path: str = Field(..., min_length=1, description="Absolute path of source video")
+    source_path: str = Field(..., min_length=1, description="Absolute path of source video") 
 
 class UserInputs(BaseModel):
     """User input configuration for export."""
@@ -47,7 +56,7 @@ class ExportOutputs(BaseModel):
     transcript: Optional[OutputFormats] = None
     events: Optional[OutputFormats] = None
     insights: Optional[OutputFormats] = None
-    markers: Optional[OutputFormats] = None
+    # markers: Optional[OutputFormats] = None
     grounding: GroundingConfig = Field(default_factory=GroundingConfig)
 
 

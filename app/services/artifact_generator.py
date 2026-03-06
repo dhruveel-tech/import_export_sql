@@ -89,7 +89,6 @@ class ArtifactGenerator:
 
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
-        logger.info("--------------------------------------------------")
         logger.info(f"Generated transcript JSON : filepath={filepath}")
         return filepath
             
@@ -162,29 +161,30 @@ class ArtifactGenerator:
         # Get optional video path
         # ---------------------------------------------
         video_path = segments[0].get("fullPath") if segments else None
-        video_path = r"D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4"
+        
+        # ---- Main logic ----
 
-        if os.path.exists(video_path):
+        DEFAULT_FPS = 25
+        DEFAULT_WIDTH = "1920"
+        DEFAULT_HEIGHT = "1080"
+
+        fps = DEFAULT_FPS
+        width = DEFAULT_WIDTH
+        height = DEFAULT_HEIGHT
+
+        if video_path and os.path.exists(video_path):
+            
             meta = self._get_video_metadata(video_path)
-
-            raw_fps = meta["fps"]
-            if isinstance(raw_fps, str) and "/" in raw_fps:
-                num, den = raw_fps.split("/")
-                fps = round(int(num) / int(den))
-            else:
-                fps = round(float(raw_fps))
-
+            fps = self._parse_fps(meta["fps"])
+            
             duration_frames = int(meta["duration"] * fps)
             width = str(meta["width"])
             height = str(meta["height"])
         else:
-            fps = 25
             duration_seconds = (
                 max(float(seg["end"]) for seg in segments) if segments else 1
             )
             duration_frames = int(duration_seconds * fps)
-            width = "1920"
-            height = "1080"
 
         def seconds_to_frames(seconds: float) -> int:
             return int(round(float(seconds) * fps))
@@ -409,29 +409,30 @@ class ArtifactGenerator:
         # Get optional video path
         # ---------------------------------------------
         video_path = segments[0].get("fullPath") if segments else None
-        video_path = r"D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4"
+        
+        # ---- Main logic ----
 
-        if os.path.exists(video_path):
+        DEFAULT_FPS = 25
+        DEFAULT_WIDTH = "1920"
+        DEFAULT_HEIGHT = "1080"
+
+        fps = DEFAULT_FPS
+        width = DEFAULT_WIDTH
+        height = DEFAULT_HEIGHT
+
+        if video_path and os.path.exists(video_path):
+            
             meta = self._get_video_metadata(video_path)
-
-            raw_fps = meta["fps"]
-            if isinstance(raw_fps, str) and "/" in raw_fps:
-                num, den = raw_fps.split("/")
-                fps = round(int(num) / int(den))
-            else:
-                fps = round(float(raw_fps))
-
+            fps = self._parse_fps(meta["fps"])
+            
             duration_frames = int(meta["duration"] * fps)
             width = str(meta["width"])
             height = str(meta["height"])
         else:
-            fps = 25
             duration_seconds = (
                 max(float(seg["end"]) for seg in segments) if segments else 1
             )
             duration_frames = int(duration_seconds * fps)
-            width = "1920"
-            height = "1080"
 
         def seconds_to_frames(seconds: float) -> int:
             return int(round(float(seconds) * fps))
@@ -729,29 +730,29 @@ class ArtifactGenerator:
         # Get optional video path
         # ---------------------------------------------
         video_path = segments[0].get("fullPath") if segments else None
-        video_path = r"D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4"
+        # ---- Main logic ----
 
-        if os.path.exists(video_path):
+        DEFAULT_FPS = 25
+        DEFAULT_WIDTH = "1920"
+        DEFAULT_HEIGHT = "1080"
+
+        fps = DEFAULT_FPS
+        width = DEFAULT_WIDTH
+        height = DEFAULT_HEIGHT
+
+        if video_path and os.path.exists(video_path):
+            
             meta = self._get_video_metadata(video_path)
-
-            raw_fps = meta["fps"]
-            if isinstance(raw_fps, str) and "/" in raw_fps:
-                num, den = raw_fps.split("/")
-                fps = round(int(num) / int(den))
-            else:
-                fps = round(float(raw_fps))
-
+            fps = self._parse_fps(meta["fps"])
+            
             duration_frames = int(meta["duration"] * fps)
             width = str(meta["width"])
             height = str(meta["height"])
         else:
-            fps = 25
             duration_seconds = (
                 max(float(seg["end"]) for seg in segments) if segments else 1
             )
             duration_frames = int(duration_seconds * fps)
-            width = "1920"
-            height = "1080"
 
         def seconds_to_frames(seconds: float) -> int:
             return int(round(float(seconds) * fps))
@@ -1430,4 +1431,9 @@ Good luck with your analysis!
             "fps": fps
         }
         
-        
+    def _parse_fps(self, raw_fps):
+        """Safely parse FPS value (e.g., '30000/1001' or '29.97')."""
+        if isinstance(raw_fps, str) and "/" in raw_fps:
+            num, den = raw_fps.split("/")
+            return round(int(num) / int(den))
+        return round(float(raw_fps))

@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     # Storage Settings
     EXPORT_BASE_PATH: str = "/sdna_fs/ADMINISTRATORDROPBOX/primary/SparkOutput/exports"
     EXPORT_VIDEO_SPIT_PATH: str = "/sdna_fs/ADMINISTRATORDROPBOX/primary/SparkOutput/videos"
-    IMPORT_BASE_PATH: str = "/sdna_fs/ADMINISTRATORDROPBOX/primary/SparkOutput/imports"
     MAX_UPLOAD_SIZE: int = 5_368_709_120  # 5GB
     ALLOWED_IMPORT_FORMATS: str = "json,csv"
 
