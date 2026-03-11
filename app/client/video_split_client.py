@@ -14,11 +14,11 @@ from app.core.logging_config import logger
 class VideoSplitClient:
     """Service for splitting videos into segments using FFmpeg."""
 
-    def __init__(self, output_base_path: Optional[str] = None):
+    def __init__(self):
         """Initialize MongoDB client directly."""
         self.client = MongoClient(settings.MONGODB_URL)
         self.db = self.client[settings.MONGODB_DB_NAME]
-        self.output_base_path = output_base_path or settings.EXPORT_BASE_PATH
+        self.output_base_path = settings.EXPORT_VIDEO_SPIT_PATH
 
     async def close(self):
         """Close MongoDB connection."""
@@ -150,20 +150,30 @@ class VideoSplitClient:
         output_path: str,
         width: int,
         height: int,
-        keep_aspect: str = "decrease",
-        pad: bool = True,
+        start_time: float = None,
+        end_time: float = None,
+        position: str = "center",
         video_codec: str = "libx264",
         audio_codec: str = "aac",
         crf: int = 23,
         preset: str = "medium",
     ) -> Path:
-        """Resize a video using FFmpeg (non-blocking)."""
+        """Resize a video segment using FFmpeg (non-blocking)."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None,
             self._resize_video_sync,
-            video_filepath, output_path, width, height,
-            keep_aspect, pad, video_codec, audio_codec, crf, preset,
+            video_filepath,
+            output_path,
+            width,
+            height,
+            start_time,
+            end_time,
+            position,
+            video_codec,
+            audio_codec,
+            crf,
+            preset,
         )
 
     def _resize_video_sync(
@@ -172,8 +182,9 @@ class VideoSplitClient:
         output_path: str,
         width: int,
         height: int,
-        keep_aspect: str = "decrease",
-        pad: bool = True,
+        start_time: float = None,
+        end_time: float = None,
+        position: str = "center",
         video_codec: str = "libx264",
         audio_codec: str = "aac",
         crf: int = 23,
@@ -183,21 +194,35 @@ class VideoSplitClient:
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        vf_filter = (
-            f"crop=ih*16/9:ih:(iw-ow)/2:0,"
-            f"scale={width}:{height}"
-        )
+        crop_width = f"ih*{height}/{width}"
 
-        ffmpeg_cmd = [
-            "ffmpeg", "-y",
-            "-i", str(video_path),
+        if position == "left":
+            x_offset = "0"
+        elif position == "right":
+            x_offset = "(iw-ow)"
+        else:  # center
+            x_offset = "(iw-ow)/2"
+
+        vf_filter = f"crop={crop_width}:ih:{x_offset}:0"
+        
+        ffmpeg_cmd = ["ffmpeg", "-y"]
+
+        # Add start time (fast seek)
+        if start_time is not None and end_time is not None:
+            duration = end_time - start_time
+            ffmpeg_cmd.extend(["-ss", str(start_time)])
+            ffmpeg_cmd.extend(["-t", str(duration)])
+
+        ffmpeg_cmd.extend(["-i", str(video_path)])
+        
+        ffmpeg_cmd.extend([
             "-vf", vf_filter,
             "-c:v", video_codec,
             "-preset", preset,
             "-crf", str(crf),
             "-c:a", audio_codec,
             str(output_file),
-        ]
+        ])
 
         try:
             subprocess.run(ffmpeg_cmd, check=True, capture_output=True)

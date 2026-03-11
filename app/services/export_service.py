@@ -49,6 +49,7 @@ class ExportService:
                 job = ExportJob(
                     export_id=str(uuid4()),
                     repo_guid=work_order.repo_guid,
+                    export_job_name=work_order.export_job_name,
                     export_mode=work_order.metadata.export_mode,
                     export_preset=work_order.metadata.export_preset,
                     work_order=json.dumps(work_order.model_dump(mode="json")),
@@ -285,6 +286,7 @@ class ExportService:
         return ExportJobResponse.model_validate({
             "export_id": job.export_id,
             "repo_guid": job.repo_guid,
+            "export_job_name": job.export_job_name,
             "export_mode": job.export_mode,
             "export_preset": job.export_preset,
             "work_order": json.loads(job.work_order) if job.work_order else {},

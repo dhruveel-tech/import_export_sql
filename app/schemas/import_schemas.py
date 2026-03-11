@@ -54,6 +54,8 @@ class ImportWorkOrder(BaseModel):
     schemaVersion: str = Field(default="1.0")
     asset: Asset
     highlights: List[Highlight]
+    import_job_name: Optional[str] = None
+    tag: Optional[str] = None
 
     @field_validator("highlights")
     @classmethod
@@ -74,8 +76,10 @@ class ImportWorkOrder(BaseModel):
 class ImportJobResponse(BaseModel):
     """Response schema for import job."""
     import_id: UUID
+    import_job_name: Optional[str] = None
     repo_guid: str
     status: str
+    tag: Optional[str] = None
     items_processed: int = 0
     items_created: int = 0
     items_updated: int = 0

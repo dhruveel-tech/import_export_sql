@@ -83,6 +83,7 @@ async def get_video_split_status(split_job_id: str):
 
     return VideoSplitStatusResponse(
         split_job_id=job.split_job_id,
+        video_split_job_name=job.video_split_job_name,
         status=job.status,
         error_message=job.error_message,
         created_at=job.created_at,

@@ -74,6 +74,7 @@ class ExportJob(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     export_id = Column(String, unique=True, index=True, default=lambda: str(uuid4()))
     repo_guid = Column(String, index=True, nullable=False)
+    export_job_name = Column(String, nullable=True)
     export_mode = Column(String, default=ExportMode.EDITORIAL.value)
     export_preset = Column(String, nullable=True)
     work_order = Column(Text, nullable=False)          # JSON
@@ -105,6 +106,7 @@ class ExportJob(Base):
         return {
             "export_id": self.export_id,
             "repo_guid": self.repo_guid,
+            "export_job_name": self.export_job_name,
             "export_mode": self.export_mode,
             "export_preset": self.export_preset,
             "work_order": _from_json(self.work_order),
@@ -163,7 +165,9 @@ class ImportLLmJob(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     import_id = Column(String, unique=True, index=True, default=lambda: str(uuid4()))
-    asset = Column(Text, nullable=False)               # JSON {repo_guid, fullPath}
+    import_job_name = Column(String, nullable=True)
+    asset = Column(Text, nullable=False)        
+    tag = Column(String, nullable=True)
     validation_errors = Column(Text, nullable=True)    # JSON
     status = Column(String, index=True, default=JobStatus.PENDING.value)
     submitted_by = Column(String, nullable=True)
@@ -188,9 +192,11 @@ class ImportLLmJob(Base):
     def to_dict(self):
         return {
             "import_id": self.import_id,
+            "import_job_name": self.import_job_name,
             "asset": _from_json(self.asset),
             "validation_errors": _from_json(self.validation_errors),
             "status": self.status,
+            "tag": self.tag,
             "submitted_by": self.submitted_by,
             "items_processed": self.items_processed,
             "items_created": self.items_created,
@@ -246,10 +252,10 @@ class VideoSplitJob(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     split_job_id = Column(String, unique=True, index=True, default=lambda: str(uuid4()))
     repo_guid = Column(String, index=True, nullable=False)
+    video_split_job_name = Column(String, nullable=True)
     video_file_path = Column(String, nullable=False)
     handle_seconds = Column(Float, default=0.0)
     encoding = Column(String, default="copy")
-    output_folder = Column(String, nullable=False)
     work_order = Column(Text, nullable=False)          # JSON
     status = Column(String, index=True, default=JobStatus.PENDING.value)
     zip_file_path = Column(String, nullable=True)
@@ -279,10 +285,10 @@ class VideoSplitJob(Base):
         return {
             "split_job_id": self.split_job_id,
             "repo_guid": self.repo_guid,
+            "video_split_job_name": self.video_split_job_name,
             "video_file_path": self.video_file_path,
             "handle_seconds": self.handle_seconds,
             "encoding": self.encoding,
-            "output_folder": self.output_folder,
             "work_order": _from_json(self.work_order),
             "status": self.status,
             "zip_file_path": self.zip_file_path,

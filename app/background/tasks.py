@@ -245,6 +245,7 @@ async def process_import_background_for_llm(import_id: str, highlights_list: Lis
                 repo_guid=asset["repo_guid"],
                 full_path=asset["fullPath"],
                 highlights=batch,
+                tag=job.tag
             )
 
             items_created += result.get("created", 0)
@@ -331,7 +332,7 @@ async def process_video_split_task(split_job_id: str):
         work_order = json.loads(job.work_order)
         repo_guid = work_order["repo_guid"]
 
-        video_service = VideoSplitClient(output_base_path=job.output_folder)
+        video_service = VideoSplitClient()
 
         if not await video_service.check_ffmpeg_available():
             return JSONResponse(
@@ -345,10 +346,7 @@ async def process_video_split_task(split_job_id: str):
         total_duration = await video_service.get_video_duration(job.video_file_path)
         video_path = Path(job.video_file_path)
 
-        if job.output_folder:
-            output_folder = Path(job.output_folder)
-        else:
-            output_folder = Path(settings.EXPORT_BASE_PATH) / split_job_id
+        output_folder = Path(settings.EXPORT_VIDEO_SPIT_PATH) / split_job_id
 
         output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -359,7 +357,7 @@ async def process_video_split_task(split_job_id: str):
         full_video = work_order.get("outputs", {}).get("full_video", {}).get("is_enabled", False)
         individual_segments = work_order.get("outputs", {}).get("individual_segments", {}).get("is_enabled", False)
         merge_segments = work_order.get("outputs", {}).get("merge_segments", {}).get("is_enabled", False)
-        resize_video = work_order.get("outputs", {}).get("resize_video", {}).get("is_enabled", False)
+        custom_segments = work_order.get("outputs", {}).get("custom_segments", {}).get("is_enabled", False)
         results = []
 
         segments_successful = 0
@@ -369,12 +367,32 @@ async def process_video_split_task(split_job_id: str):
         # FULL VIDEO EXPORT
         if full_video:
             try:
-                output_filename = video_service.generate_output_filename(video_path, 0, total_duration, "full_video", 0)
-                output_path = output_folder / split_job_id / "Full_Video" / output_filename
-                result_path = await video_service.split_video_segment(job.video_file_path, 0, total_duration, str(output_path), encoding=job.encoding)
-                artifacts.append(_create_artifact_record(result_path, "video_full", "mp4", split_job_id))
-                results.append(generate_result_for_video_split(0, "full_video", 0, round(total_duration, 2), 0, round(total_duration, 2), round(total_duration, 2), output_filename, result_path, result_path.stat().st_size, "success", None))
+                segments_processed += 1
+                resize_full_video = work_order.get("outputs", {}).get("full_video", {}).get("is_resize_enabled", {}).get("is_enabled", False)
+                position = work_order.get("outputs", {}).get("full_video", {}).get("is_resize_enabled", {}).get("position", "center")
+                resize_path = None
+                result_path = None
+                height = None
+                width = None
+                
+                if resize_full_video:
+                    logger.info("Resizing full video as per configuration...")
+                    height = work_order.get("outputs", {}).get("full_video", {}).get("is_resize_enabled", {}).get("height", 16)
+                    width = work_order.get("outputs", {}).get("full_video", {}).get("is_resize_enabled", {}).get("width", 9)
+                    
+                    resize_path, output_filename = await resize_video_task(video_service, video_path, output_folder, height, width, total_duration, resized_op_folder='Resized_Full_Video', position=position)
+                    
+                else:
+                    logger.info("Exporting full video without resizing...")
+                    output_filename = video_service.generate_output_filename(video_path, 0, total_duration, "full_video", 0)
+                    output_path = output_folder / "Full_Video" / output_filename
+                    result_path = await video_service.split_video_segment(job.video_file_path, 0, total_duration, str(output_path), encoding=job.encoding)
+                
+                    
+                artifacts.append(_create_artifact_record(result_path if result_path else resize_path, "resized_full_video" if resize_full_video else "full_video", "mp4", split_job_id))
+                results.append(generate_result_for_video_split(0, f"resized_{height}x{width}" if resize_full_video else "full_video", 0, round(total_duration, 2), 0, round(total_duration, 2), round(total_duration, 2), output_filename, result_path if result_path else resize_path, result_path.stat().st_size if result_path else resize_path.stat().st_size , "success", None))
                 segments_successful += 1
+                
                 logger.info(f"Full video exported : split_job_id={split_job_id}")
             except Exception as e:
                 segments_failed += 1
@@ -382,110 +400,204 @@ async def process_video_split_task(split_job_id: str):
 
         # INDIVIDUAL SEGMENTS
         if individual_segments:
-            for idx, segment_config in enumerate(segments):
-                try:
-                    start_time = segment_config["start"]
-                    end_time = segment_config["end"]
-                    actual_start, actual_end, duration = video_service.calculate_segment_times(start_time, end_time, job.handle_seconds, total_duration)
-                    output_filename = video_service.generate_output_filename(video_path, actual_start, actual_end, "single_seg", idx)
-                    output_path = output_folder / split_job_id / "Indiv_Seg" / output_filename
-                    result_path = await video_service.split_video_segment(job.video_file_path, actual_start, actual_end, str(output_path), encoding=job.encoding)
-                    artifacts.append(_create_artifact_record(result_path, "video_split", "mp4", split_job_id))
-                    results.append(generate_result_for_video_split(idx, "single_seg", round(start_time, 2), round(end_time, 2), round(actual_start, 2), round(actual_end, 2), round(duration, 2), output_filename, result_path, result_path.stat().st_size, "success", None))
-                    segments_successful += 1
-                except Exception as seg_error:
-                    logger.error(f"Failed to process video segment : split_job_id={split_job_id} , segment_index={idx} , error={str(seg_error)}")
-                    results.append(generate_result_for_video_split(idx, "single_seg", segment_config.get("start", 0), segment_config.get("end", 0), 0, 0, 0, "", "", 0, "failed", str(seg_error)))
-                    segments_failed += 1
-                segments_processed += 1
+            try:
+                resize_seg_video = work_order.get("outputs", {}).get("individual_segments", {}).get("is_resize_enabled", {}).get("is_enabled", False)
+                position = work_order.get("outputs", {}).get("individual_segments", {}).get("is_resize_enabled", {}).get("position", "center")
+                resize_path = None
+                result_path = None
+                height = None
+                width = None
+                resize_log_printed = False
+                indi_seg_success = 0
+                indi_seg_failed = 0
+                for idx, segment_config in enumerate(segments):
+                    try:
+                        segments_processed += 1
+                        start_time = segment_config["start"]
+                        end_time = segment_config["end"]
+                        actual_start, actual_end, duration = video_service.calculate_segment_times(start_time, end_time, job.handle_seconds, total_duration)
+                        
+                        if resize_seg_video:
+                            if not resize_log_printed:
+                                logger.info("Resizing Seg video as per configuration...")
+                                resize_log_printed = True
 
+                            height = work_order.get("outputs", {}).get("individual_segments", {}).get("is_resize_enabled", {}).get("height", 16)
+                            width = work_order.get("outputs", {}).get("individual_segments", {}).get("is_resize_enabled", {}).get("width", 9)
+                            
+                            resize_path, output_filename = await resize_video_task(video_service, video_path, output_folder, height, width, total_duration, resized_op_folder='Resized_Seg_Video', start_time=actual_start, end_time=actual_end, position=position)
+                            indi_seg_success += 1            
+                        else:
+                            if not resize_log_printed:
+                                logger.info("Exporting Seg video without resizing...")
+                                resize_log_printed = True
+                            output_filename = video_service.generate_output_filename(video_path, actual_start, actual_end, "seg_video", idx)
+                            output_path = output_folder / "Seg_Video" / output_filename
+                            result_path = await video_service.split_video_segment(job.video_file_path, actual_start, actual_end, str(output_path), encoding=job.encoding)
+                            indi_seg_success += 1
+                        
+                        artifacts.append(_create_artifact_record(result_path if result_path else resize_path, "resized_seg_video" if resize_seg_video else "seg_video", "mp4", split_job_id))
+                        results.append(generate_result_for_video_split(idx, f"resized_{height}x{width}" if resize_seg_video else "seg_video", round(start_time, 2), round(end_time, 2), round(actual_start, 2), round(actual_end, 2), round(duration, 2), output_filename, result_path if result_path else resize_path, result_path.stat().st_size if result_path else resize_path.stat().st_size, "success", None))
+                        segments_successful += 1
+                    except Exception as seg_error:
+                        logger.error(f"Failed to process video segment : split_job_id={split_job_id} , segment_index={idx} , error={str(seg_error)}")
+                        results.append(generate_result_for_video_split(idx, "resized_seg_video" if resize_seg_video else "seg_video", segment_config.get("start", 0), segment_config.get("end", 0), 0, 0, 0, "", "", 0, "failed", str(seg_error)))
+                        segments_failed += 1
+                        indi_seg_failed += 1
+                        
+                logger.info(f"Processed Individual segments: {indi_seg_success} successful, {indi_seg_failed} failed")
+            except Exception as e:
+                logger.error(f"Individual segments export failed : error={str(e)}")
+        
         # MERGE SEGMENTS
         if merge_segments and segments:
             try:
+                segments_processed += 1
+                resize_merge_video = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("is_enabled", False)
+                position = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("position", "center")
+                resize_path = None
+                result_path = None
+                height = None
+                width = None
+            
                 min_start = min(seg["start"] for seg in segments)
                 max_end = max(seg["end"] for seg in segments)
                 actual_start, actual_end, duration = video_service.calculate_segment_times(min_start, max_end, job.handle_seconds, total_duration)
-                output_filename = video_service.generate_output_filename(video_path, actual_start, actual_end, "merged", 0)
-                output_path = output_folder / split_job_id / "Merge_Seg" / output_filename
-                result_path = await video_service.split_video_segment(job.video_file_path, actual_start, actual_end, str(output_path), encoding=job.encoding)
-                artifacts.append(_create_artifact_record(result_path, "video_merged", "mp4", split_job_id))
-                results.append(generate_result_for_video_split(0, "merged_segments", round(min_start, 2), round(max_end, 2), round(actual_start, 2), round(actual_end, 2), round(duration, 2), output_filename, result_path, result_path.stat().st_size, "success", None))
+                
+                if resize_merge_video:
+                    logger.info("Resizing Merge video as per configuration...")
+                    height = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("height", 16)
+                    width = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("width", 9)
+                    resize_path, output_filename = await resize_video_task(video_service, video_path, output_folder, height, width, total_duration, resized_op_folder='Resized_Merge_Video', start_time=actual_start, end_time=actual_end, position=position)
+                                    
+                else:
+                    logger.info("Exporting Merge video without resizing...")
+                    output_filename = video_service.generate_output_filename(video_path, actual_start, actual_end, "merged", 0)
+                    output_path = output_folder / "Merge_Video" / output_filename
+                    result_path = await video_service.split_video_segment(job.video_file_path, actual_start, actual_end, str(output_path), encoding=job.encoding)
+                
+                
+                artifacts.append(_create_artifact_record(result_path if result_path else resize_path, "resized_merge_video" if resize_merge_video else "merge_video", "mp4", split_job_id))
+                results.append(generate_result_for_video_split(0, f"resized_{height}x{width}" if resize_merge_video else "merge_video", round(min_start, 2), round(max_end, 2), round(actual_start, 2), round(actual_end, 2), round(duration, 2), output_filename, result_path if result_path else resize_path, result_path.stat().st_size if result_path else resize_path.stat().st_size, "success", None))
                 segments_successful += 1
                 logger.info(f"Merged segment created : split_job_id={split_job_id}")
             except Exception as e:
                 segments_failed += 1
                 logger.error(f"Merge segments failed : error={str(e)}")
 
-        if resize_video:
+        if custom_segments:
+            logger.info("Custom segments export is enabled, but the implementation is pending. Skipping this step.")
             try:
-                height = work_order.get("outputs", {}).get("resize_video", {}).get("height", 1080)
-                width = work_order.get("outputs", {}).get("resize_video", {}).get("width", 1920)
-                # Generate output filename
-                output_filename = video_service.generate_output_filename(
-                    video_path,
-                    0,
-                    total_duration,
-                    f"resized_{height}x{width}",
-                    0
-                )
+                resize_seg_video = work_order.get("outputs", {}).get("custom_segments", {}).get("is_resize_enabled", {}).get("is_enabled", False)
+                position = work_order.get("outputs", {}).get("custom_segments", {}).get("is_resize_enabled", {}).get("position", "center")
+                resize_path = None
+                result_path = None
+                height = None
+                width = None
+                resize_log_printed = False
+                indi_seg_success = 0
+                indi_seg_failed = 0
+                clip_duration = work_order.get("outputs", {}).get("custom_segments", {}).get("duration_threshold", None)
 
-                output_path = (
-                    output_folder
-                    / split_job_id
-                    / "Resized_Video"
-                    / output_filename
-                )
+                if clip_duration:
+                    logger.info(f"Processing video in {clip_duration} second clips")
 
-                # Call resize function
-                result_path = await video_service.resize_video(
-                    video_filepath=job.video_file_path,
-                    output_path=str(output_path),
-                    width=width,
-                    height=height,
-                    video_codec="libx264",
-                    audio_codec="aac",
-                    crf=23,
-                    preset="medium"
-                )
-                
-                print(f"Resize result path: {result_path}")
+                    current_start = 0
+                    idx = 0
 
-                artifacts.append(
-                    _create_artifact_record(
-                        result_path,
-                        "video_resized",
-                        "mp4",
-                        split_job_id
-                    )
-                )
+                    while current_start < total_duration:
+                        try:
+                            segments_processed += 1
 
-                results.append(
-                    generate_result_for_video_split(
-                        0,
-                        f"resized_{height}x{width}",
-                        0,
-                        round(total_duration, 2),
-                        0,
-                        round(total_duration, 2),
-                        round(total_duration, 2),
-                        output_filename,
-                        result_path,
-                        result_path.stat().st_size,
-                        "success",
-                        None
-                    )
-                )
+                            current_end = min(current_start + clip_duration, total_duration)
 
-                segments_successful += 1
-                logger.info(
-                    f"Video resized successfully: {height}x{width}, split_job_id={split_job_id}"
-                )
+                            actual_start, actual_end, duration = video_service.calculate_segment_times(
+                                current_start,
+                                current_end,
+                                job.handle_seconds,
+                                total_duration
+                            )
 
+                            if resize_seg_video:
+                                if not resize_log_printed:
+                                    logger.info("Resizing Seg video as per configuration...")
+                                    resize_log_printed = True
+
+                                height = work_order.get("outputs", {}).get("custom_segments", {}).get("is_resize_enabled", {}).get("height", 16)
+                                width = work_order.get("outputs", {}).get("custom_segments", {}).get("is_resize_enabled", {}).get("width", 9)
+
+                                resize_path, output_filename = await resize_video_task(
+                                    video_service,
+                                    video_path,
+                                    output_folder,
+                                    height,
+                                    width,
+                                    total_duration,
+                                    resized_op_folder='Resized_Custom_Seg_Video',
+                                    start_time=actual_start,
+                                    end_time=actual_end,
+                                    position=position
+                                )
+
+                                result_path = resize_path
+                                indi_seg_success += 1
+
+                            else:
+                                if not resize_log_printed:
+                                    logger.info("Exporting Seg video without resizing...")
+                                    resize_log_printed = True
+
+                                output_filename = video_service.generate_output_filename(
+                                    video_path,
+                                    actual_start,
+                                    actual_end,
+                                    "seg_video",
+                                    idx
+                                )
+
+                                output_path = output_folder / "Custom_Seg_Video" / output_filename
+
+                                result_path = await video_service.split_video_segment(
+                                    job.video_file_path,
+                                    actual_start,
+                                    actual_end,
+                                    str(output_path),
+                                    encoding=job.encoding
+                                )
+
+                                indi_seg_success += 1
+
+                            artifacts.append(
+                                _create_artifact_record(result_path,"resized_custom_seg_video" if resize_seg_video else "custom_seg_video","mp4",split_job_id)
+                            )
+
+                            results.append(
+                                generate_result_for_video_split(
+                                    idx,f"resized_{height}x{width}" if resize_seg_video else "custom_seg_video",round(current_start, 2),round(current_end, 2),round(actual_start, 2),round(actual_end, 2),round(duration, 2),output_filename,result_path,result_path.stat().st_size,"success",None
+                                )
+                            )
+
+                            segments_successful += 1
+
+                        except Exception as seg_error:
+                            logger.error(
+                                f"Failed to process video segment : split_job_id={split_job_id} , segment_index={idx} , error={str(seg_error)}"
+                            )
+
+                            results.append(
+                                generate_result_for_video_split(
+                                    idx,"resized_custom_seg_video" if resize_seg_video else "custom_seg_video",current_start,current_end,0,0,0,"","",0,"failed",str(seg_error)
+                                )
+                            )
+
+                            segments_failed += 1
+                            indi_seg_failed += 1
+
+                        current_start += clip_duration
+                        idx += 1     
+                logger.info(f"Processed  segments: {indi_seg_success} successful, {indi_seg_failed} failed")
             except Exception as e:
-                segments_failed += 1
-                logger.error(
-                    f"Video resize failed: split_job_id={split_job_id}, error={str(e)}"
-                )
+                logger.error(f"Individual segments export failed : error={str(e)}")
         
         zip_path = _create_zip_from_folder(split_job_id, settings.EXPORT_VIDEO_SPIT_PATH)
         logger.info(f"Zip File Path Generated : {zip_path}")
@@ -539,6 +651,35 @@ async def process_video_split_task(split_job_id: str):
         if video_service:
             await video_service.close()
 
+async def resize_video_task(video_service, video_path, output_folder, height, width, total_duration, resized_op_folder, start_time=None, end_time=None, position="center"):
+    output_filename = video_service.generate_output_filename(
+        video_path,
+        start_time if start_time is not None else 0,
+        total_duration if end_time is None else end_time,
+        f"resized_{height}x{width}",
+        0
+    )
+    output_path = (
+        output_folder
+        / resized_op_folder
+        / output_filename
+    )
+    
+    resize_path = await video_service.resize_video(
+        video_filepath=video_path,
+        output_path=str(output_path),
+        width=width,
+        height=height,
+        position=position,
+        start_time = start_time,
+        end_time = end_time,
+        video_codec="libx264",
+        audio_codec="aac",
+        crf=23,
+        preset="medium"
+    )
+    
+    return resize_path, output_filename
 
 # ---------------------------------------------------------------------------
 # Helpers (unchanged logic, same signatures)

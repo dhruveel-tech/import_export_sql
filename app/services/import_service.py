@@ -31,7 +31,7 @@ class ImportService:
         """Create a new Custom Timeline Event import job."""
         try:
             logger.info("---------------- LLM IMPORT JOB ----------------")
-
+            
             validation_errors = self._validate_highlights(work_order.highlights)
 
             async with AsyncSessionLocal() as session:
@@ -43,6 +43,8 @@ class ImportService:
                         import_id=import_id,
                         asset=asset_json,
                         status=JobStatus.FAILED.value,
+                        import_job_name=work_order.import_job_name,
+                        tag=work_order.tag,
                         validation_errors=json.dumps([e.model_dump() for e in validation_errors]),
                         error_message="Validation failed",
                     )
@@ -51,6 +53,8 @@ class ImportService:
                         import_id=import_id,
                         asset=asset_json,
                         status=JobStatus.PENDING.value,
+                        tag=work_order.tag,
+                        import_job_name=work_order.import_job_name,
                     )
 
                 session.add(job)
@@ -80,8 +84,10 @@ class ImportService:
             asset = json.loads(job.asset)
             return ImportJobResponse(
                 import_id=job.import_id,
+                import_job_name=job.import_job_name,
                 repo_guid=asset.get("repo_guid"),
                 status=job.status,
+                tag=job.tag,
                 items_processed=job.items_processed,
                 items_created=job.items_created,
                 items_updated=job.items_updated,
@@ -151,8 +157,10 @@ class ImportService:
                 asset = json.loads(job.asset)
                 return ImportJobResponse(
                     import_id=job.import_id,
+                    import_job_name=job.import_job_name,
                     repo_guid=asset.get("repo_guid"),
                     status=job.status,
+                    tag=job.tag,
                     items_processed=job.items_processed,
                     items_created=job.items_created,
                     items_updated=job.items_updated,
@@ -235,8 +243,10 @@ class ImportService:
                         continue
                     out.append(ImportJobResponse(
                         import_id=job.import_id,
+                        import_job_name=job.import_job_name,
                         repo_guid=asset.get("repo_guid"),
                         status=job.status,
+                        tag=job.tag,
                         items_processed=job.items_processed,
                         items_created=job.items_created,
                         items_updated=job.items_updated,

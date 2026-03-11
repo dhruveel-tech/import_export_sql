@@ -13,69 +13,34 @@ class ExportVideoInputs(BaseModel):
     event_ids: List[str] = Field(default_factory=list)
     video_path: str = Field(..., min_length=1, description="Absolute path of source video")
 
-class FeatureToggle(BaseModel):
-    is_enabled: bool = False
-
-
 class ResizeVideoConfig(BaseModel):
     is_enabled: bool = False
     width: Optional[int] = None
     height: Optional[int] = None
+    position: Optional[str] = "center"
 
+class FeatureToggle(BaseModel):
+    is_enabled: bool = False
+    is_resize_enabled: Optional[ResizeVideoConfig] = None
+    duration_threshold: Optional[float] = None  
 
 class ExportVideoOutputs(BaseModel):
     """Export output configuration."""
     full_video: Optional[FeatureToggle] = None
     individual_segments: Optional[FeatureToggle] = None
     merge_segments: Optional[FeatureToggle] = None
-    resize_video: Optional[ResizeVideoConfig] = None
+    custom_segments: Optional[FeatureToggle] = None
     
 class VideoSplitWorkOrderCreate(BaseModel):
     """Request to split a video into segments."""
     schemaVersion: str = Field(default="1.0")
     repo_guid: str = Field(..., min_length=1, max_length=255)
+    video_split_job_name: Optional[str] = Field(None, max_length=255)
     inputs: ExportVideoInputs = Field(default_factory=ExportVideoInputs)
     outputs: ExportVideoOutputs = Field(default_factory=ExportVideoOutputs)
     handle_seconds: float = Field(default=0.0, ge=0, description="Number of seconds to add before/after each segment (handles)")
-    output_folder: Optional[str] = Field(None, description="Output folder path")
     encoding: Optional[str] = Field(default="copy", description="Encoding method: 'copy' for fast copy, or codec like 'h264'")
     requested_by: Optional[str] = Field(None, max_length=255)
-    
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "schemaVersion": "1.0",
-                "repo_guid": "repo-123",
-                "inputs": {
-                    "event_ids": [
-                        "event-001",
-                        "event-002"
-                    ],
-                    "video_path": "/media/videos/interview.mp4"
-                },
-                "outputs": {
-                    "full_video": {
-                        "is_enabled": True
-                    },
-                    "individual_segments": {
-                        "is_enabled": True
-                    },
-                    "merge_segments": {
-                        "is_enabled": True
-                    },
-                    "resize_video": {
-                        "is_enabled": True,
-                        "width": 1280,
-                        "height": 720
-                    }
-                },
-                "handle_seconds": 2.0,
-                "output_folder": "/media/exports",
-                "encoding": "copy",
-                "requested_by": "editor@company.com"
-            }
-        }
-    }
 
 class ArtifactVideoSplitResponse(BaseModel):
     """Response schema for an artifact."""
@@ -100,6 +65,7 @@ class VideoSplitJobResponse(BaseModel):
     """Response for video split job."""
     split_job_id: UUID
     repo_guid: str
+    video_split_job_name: Optional[str] = None
     status: str  
     zip_file_path: Optional[str] = None
     video_file_path: str
@@ -124,6 +90,7 @@ class ExportVideoSplitManifest(BaseModel):
 class VideoSplitStatusResponse(BaseModel):
     """Status response for video split job."""
     split_job_id: str
+    video_split_job_name: Optional[str] = None
     status: str
     error_message: Optional[str] = None
     created_at: datetime

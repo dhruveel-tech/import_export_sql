@@ -28,16 +28,15 @@ class VideoSplitService:
         """Create a new video split job."""
         try:
             logger.info(f"Creating video split job for repo_guid={work_order.repo_guid}")
-            output_folder = work_order.output_folder or settings.EXPORT_VIDEO_SPIT_PATH
 
             async with AsyncSessionLocal() as session:
                 job = VideoSplitJob(
                     split_job_id=str(uuid4()),
                     repo_guid=work_order.repo_guid,
+                    video_split_job_name=work_order.video_split_job_name,
                     video_file_path=work_order.inputs.video_path,
                     handle_seconds=work_order.handle_seconds,
                     encoding=work_order.encoding,
-                    output_folder=output_folder,
                     work_order=json.dumps(work_order.model_dump(mode="json")),
                     status=JobStatus.PENDING.value,
                 )
@@ -154,10 +153,10 @@ class VideoSplitService:
         return VideoSplitJobResponse.model_validate({
             "split_job_id": job.split_job_id,
             "repo_guid": job.repo_guid,
+            "video_split_job_name": job.video_split_job_name,
             "video_file_path": job.video_file_path,
             "handle_seconds": job.handle_seconds,
             "encoding": job.encoding,
-            "output_folder": job.output_folder,
             "work_order": json.loads(job.work_order) if job.work_order else {},
             "status": job.status,
             "zip_file_path": job.zip_file_path,

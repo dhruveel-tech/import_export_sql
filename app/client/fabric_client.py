@@ -198,6 +198,7 @@ class FabricClient:
         repo_guid: str,
         full_path: str,
         highlights: list[Dict[str, Any]],
+        tag: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Send LLM highlights to Node API in batches.
@@ -246,13 +247,17 @@ class FabricClient:
 
                 #     if not custom_events:
                 #         continue
-
                 node_payload = {
                     "repoGuid": repo_guid,
                     "fullPath": full_path,
                     "fileName": file_name,
-                    "insightEvents": highlights,
+                    "insightEvents": highlights
                 }
+
+                if tag is not None:
+                    node_payload["tag"] = str(tag)
+                    
+                logger.info(node_payload)
                 try:
                     response = await client.post(
                         url, json=node_payload, headers=headers

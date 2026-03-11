@@ -72,6 +72,7 @@ class ExportWorkOrderCreate(BaseModel):
     """Schema for creating an export work order."""
     schemaVersion: str = Field(default="1.0")
     repo_guid: str = Field(..., min_length=1, max_length=255)
+    export_job_name: Optional[str] = Field(None, max_length=255)
     inputs: ExportInputs = Field(default_factory=ExportInputs)
     user_inputs: UserInputs = Field(default_factory=UserInputs)
     outputs: ExportOutputs = Field(default_factory=ExportOutputs)
@@ -103,6 +104,7 @@ class ExportJobResponse(BaseModel):
     """Response schema for export job."""
     export_id: UUID
     repo_guid: str
+    export_job_name: Optional[str] = None
     status: str
     zip_file_path: Optional[str] = None
     export_mode: str

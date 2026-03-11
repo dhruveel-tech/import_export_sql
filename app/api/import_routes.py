@@ -71,6 +71,7 @@ async def create_import(
     schemaVersion: str = Form(...),
     repo_guid: str = Form(...),
     fullPath: str = Form(...),
+    tag:str = Form(None),
     file: UploadFile = File(None),
     background_tasks: BackgroundTasks = None,
 ):
@@ -94,8 +95,10 @@ async def create_import(
                 "repo_guid": repo_guid,
                 "fullPath": fullPath,
             },
-            highlights=highlights_list
+            highlights=highlights_list,
+            tag=tag
         )
+        print(f"parsed_work_order : {parsed_work_order}")
         job = await service.create_import_job(parsed_work_order)
 
         # Queue background processing only if validation succeeded
@@ -151,6 +154,7 @@ async def get_import_status(import_id: UUID):
             import_id=job.import_id,
             repo_guid=job.repo_guid,
             status=job.status,
+            tag=job.tag,
             items_processed=job.items_processed,
             items_created=job.items_created,
             items_updated=job.items_updated,
