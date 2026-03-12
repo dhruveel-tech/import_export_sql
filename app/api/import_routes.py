@@ -98,7 +98,7 @@ async def create_import(
             highlights=highlights_list,
             tag=tag
         )
-        print(f"parsed_work_order : {parsed_work_order}")
+        
         job = await service.create_import_job(parsed_work_order)
 
         # Queue background processing only if validation succeeded

@@ -188,8 +188,9 @@ class VideoSplitClient:
         video_codec: str = "libx264",
         audio_codec: str = "aac",
         crf: int = 23,
-        preset: str = "medium",
+        preset: str = "veryfast",
     ) -> Path:
+
         video_path = Path(video_filepath)
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -200,26 +201,29 @@ class VideoSplitClient:
             x_offset = "0"
         elif position == "right":
             x_offset = "(iw-ow)"
-        else:  # center
+        else:
             x_offset = "(iw-ow)/2"
 
         vf_filter = f"crop={crop_width}:ih:{x_offset}:0"
-        
-        ffmpeg_cmd = ["ffmpeg", "-y"]
 
-        # Add start time (fast seek)
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-y",
+            "-threads", "0",
+        ]
+
         if start_time is not None and end_time is not None:
             duration = end_time - start_time
-            ffmpeg_cmd.extend(["-ss", str(start_time)])
-            ffmpeg_cmd.extend(["-t", str(duration)])
+            ffmpeg_cmd.extend(["-ss", str(start_time), "-t", str(duration)])
 
         ffmpeg_cmd.extend(["-i", str(video_path)])
-        
+
         ffmpeg_cmd.extend([
             "-vf", vf_filter,
             "-c:v", video_codec,
             "-preset", preset,
             "-crf", str(crf),
+            "-tune", "fastdecode",
             "-c:a", audio_codec,
             str(output_file),
         ])
@@ -229,9 +233,10 @@ class VideoSplitClient:
             return output_file
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr.decode() if e.stderr else str(e)
-            logger.error(f"FFmpeg failed to resize video: input={video_filepath}, output={output_file}, error={error_msg}")
+            logger.error(
+                f"FFmpeg failed: input={video_filepath}, output={output_file}, error={error_msg}"
+            )
             return None
-
     # -----------------------------------------------------------------------
     # generate_output_filename  (pure logic, stays sync)
     # -----------------------------------------------------------------------

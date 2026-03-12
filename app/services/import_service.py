@@ -109,10 +109,14 @@ class ImportService:
     def _validate_highlights(self, highlights: List[Highlight]) -> List[ValidationError]:
         errors: List[ValidationError] = []
         try:
-            highlights = [
-                Highlight(**h) if isinstance(h, dict) else h
-                for h in highlights
-            ]
+            clean_highlights = []
+
+            for h in highlights:
+                if isinstance(h, dict):
+                    clean_highlights.append(Highlight(**h))
+                elif isinstance(h, Highlight):
+                    clean_highlights.append(h)
+                    
             for i, h in enumerate(highlights):
                 if h.start < 0:
                     errors.append(ValidationError(
@@ -120,7 +124,7 @@ class ImportService:
                         message="start timestamp cannot be negative",
                         value=h.start,
                     ))
-                if h.end <= h.start:
+                if h.end < h.start:
                     errors.append(ValidationError(
                         field=f"highlights[{i}]",
                         message="end must be greater than start",

@@ -31,14 +31,8 @@ class Highlight(BaseModel):
 
     @model_validator(mode="after")
     def validate_time_range(self):
-        if self.end <= self.start:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "status": "error",
-                    "message": "end must be greater than start"
-                }
-            )
+        if self.end < self.start:
+            raise ValueError("end must be greater than start")
         return self
 
     model_config = ConfigDict(extra="forbid")
@@ -61,13 +55,7 @@ class ImportWorkOrder(BaseModel):
     @classmethod
     def validate_highlights_not_empty(cls, v: List[Highlight]):
         if not v:
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "status": "error",
-                    "message": "highlights must contain at least one item"
-                }
-            )
+            raise ValueError("highlights must contain at least one item")
         return v
 
     model_config = ConfigDict(extra="forbid")

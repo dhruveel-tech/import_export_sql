@@ -4,6 +4,7 @@ Background Tasks for Export and Import Processing (SQLite)
 Uses FastAPI BackgroundTasks for async job processing.
 """
 import json
+import shutil
 import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -781,7 +782,17 @@ def _create_zip_from_folder(export_id: UUID, zip_base_folder_path: str) -> str:
             if file_path.is_file() and file_path != zip_path:
                 # Preserve internal structure
                 zipf.write(file_path, file_path.relative_to(export_folder))
-                
+    
+    # ---- Remove all original files and subfolders, keep only zip ----
+    for item in export_folder.iterdir():
+        if item == zip_path:
+            continue  
+        if item.is_dir():
+            shutil.rmtree(item)   # remove subfolder and all its contents
+        elif item.is_file():
+            item.unlink()         # remove individual file
+    # -----------------------------------------------------------------
+    
     # zip_file_path = str(zip_path)
     # main_zip_path = zip_path.relative_to("/mnt/AI-Shared-Drive-Demo")
 
