@@ -38,6 +38,7 @@ class ExportAllData(BaseModel):
     is_all_transcript: bool = False
     is_all_events: bool = False
     is_all_insights: bool = False
+    exclude_list: Optional[List[str]] = []  
 
 class ExportInputs(BaseModel):
     """Export input data selection."""

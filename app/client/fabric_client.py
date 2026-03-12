@@ -52,15 +52,19 @@ class FabricClient:
             full_path = inputs.get("full_path", "") if inputs else ""
             is_all_transcript = False
             source_path = inputs.get("source_path", "") if inputs else ""
+            exclude_list = []
             
             if inputs and inputs.get("is_all") and isinstance(inputs["is_all"], dict):
                 is_all_transcript = inputs["is_all"].get("is_all_transcript", False)
+                exclude_list = inputs["is_all"].get("exclude_list", [])
                 
             query: Dict[str, Any] = {"sdnaEventType": "transcript"}
                 
             if is_all_transcript:
                 query["repoGuid"] = repo_guid
                 query["fullPath"] = source_path
+                if exclude_list:
+                    query["_id"] = {"$nin": [self._to_object_id(i) for i in exclude_list]}
                 
             elif transcript_ids:
                 query["_id"] = {"$in": [self._to_object_id(i) for i in transcript_ids]}
@@ -102,15 +106,19 @@ class FabricClient:
             ids = inputs.get("event_ids", []) if inputs else []
             source_path = inputs.get("source_path", "") if inputs else ""
             is_all_events = False
+            exclude_list = []
             
             if inputs and inputs.get("is_all") and isinstance(inputs["is_all"], dict):
                 is_all_events = inputs["is_all"].get("is_all_events", False)
+                exclude_list = inputs["is_all"].get("exclude_list", [])
 
             query["sdnaEventType"] = {"$nin": ["transcript", "insight"]}
             
             if is_all_events:
                 query["repoGuid"] = repo_guid
                 query["fullPath"] = source_path
+                if exclude_list:
+                    query["_id"] = {"$nin": [self._to_object_id(i) for i in exclude_list]}
                 
             elif ids:
                 query["_id"] = {"$in": [self._to_object_id(i) for i in ids]}
@@ -150,16 +158,20 @@ class FabricClient:
             full_path = inputs.get("full_path", "") if inputs else ""
             is_all_insights = False
             source_path = inputs.get("source_path", "") if inputs else ""
+            exclude_list = []
             
             if inputs and inputs.get("is_all") and isinstance(inputs["is_all"], dict):
                 is_all_insights = inputs["is_all"].get("is_all_insights", False)
+                exclude_list = inputs["is_all"].get("exclude_list", [])
                 
             query: Dict[str, Any] = {"sdnaEventType": "insight"}
 
             if is_all_insights:
                 query["repoGuid"] = repo_guid
                 query["fullPath"] = source_path
-                
+                if exclude_list:
+                    query["_id"] = {"$nin": [self._to_object_id(i) for i in exclude_list]}
+                    
             elif ids:
                 query["_id"] = {"$in": [self._to_object_id(i) for i in ids]}
             
