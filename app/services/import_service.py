@@ -109,6 +109,7 @@ class ImportService:
     def _validate_highlights(self, highlights: List[Highlight]) -> List[ValidationError]:
         errors: List[ValidationError] = []
         try:
+            
             clean_highlights = []
 
             for h in highlights:
@@ -116,8 +117,8 @@ class ImportService:
                     clean_highlights.append(Highlight(**h))
                 elif isinstance(h, Highlight):
                     clean_highlights.append(h)
-                    
-            for i, h in enumerate(highlights):
+
+            for i, h in enumerate(clean_highlights):
                 if h.start < 0:
                     errors.append(ValidationError(
                         field=f"highlights[{i}].start",

@@ -15,21 +15,21 @@ class ExportVideoInputs(BaseModel):
 
 class ResizeVideoConfig(BaseModel):
     is_enabled: bool = False
-    width: Optional[int] = None
-    height: Optional[int] = None
+    width: Optional[int] = 0
+    height: Optional[int] = 0
     position: Optional[str] = "center"
 
 class FeatureToggle(BaseModel):
     is_enabled: bool = False
-    is_resize_enabled: Optional[ResizeVideoConfig] = None
-    duration_threshold: Optional[float] = None  
+    is_resize_enabled: Optional[ResizeVideoConfig] = {}
+    duration_threshold: Optional[float] = 0  
 
 class ExportVideoOutputs(BaseModel):
     """Export output configuration."""
-    full_video: Optional[FeatureToggle] = None
-    individual_segments: Optional[FeatureToggle] = None
-    merge_segments: Optional[FeatureToggle] = None
-    custom_segments: Optional[FeatureToggle] = None
+    full_video: Optional[FeatureToggle] = {}
+    individual_segments: Optional[FeatureToggle] = {}
+    merge_segments: Optional[FeatureToggle] = {}
+    custom_segments: Optional[FeatureToggle] = {}
     
 class VideoSplitWorkOrderCreate(BaseModel):
     """Request to split a video into segments."""

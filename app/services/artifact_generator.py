@@ -89,6 +89,7 @@ class ArtifactGenerator:
 
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
+        logger.info("--------------------------------------------------")
         logger.info(f"Generated transcript JSON : filepath={filepath}")
         return filepath
             
@@ -599,8 +600,8 @@ class ArtifactGenerator:
         video_path = ""
 
         if segments:
-            video_path = segments[0].get("fullPath", r"D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4") or ""
-        video_path = r"D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4" 
+            video_path = segments[0].get("fullPath", "")
+            
         if video_path:
             video_name = Path(video_path).name
         else:
@@ -919,8 +920,8 @@ class ArtifactGenerator:
         video_path = ""
 
         if segments:
-            video_path = segments[0].get("fullPath", r"D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4") or ""
-        video_path = r"D:\SDNA\AI_Spark\test\India vs Pakistan t20 subclip.mp4" 
+            video_path = segments[0].get("fullPath", "")
+             
         if video_path:
             video_name = Path(video_path).name
         else:
@@ -1030,13 +1031,17 @@ class ArtifactGenerator:
 
 ## Your Task
 
-You have been provided with JSON files containing events and transcripts from a video analysis.
+You have been provided with JSON files containing events and transcripts from a video analysis,
+and optionally, supplementary reference files such as song lyrics, scripts, commentary data,
+player stats, or other topic-related content.
 
 Your job is to:
-1. Analyze the events and transcript based on the user's request
-2. Create NEW events, modify existing events, or merge events as needed
-3. **Export your results as a downloadable `.json` FILE in the EXACT format specified below - NO VARIATIONS ALLOWED**
-4. Export a JSON file only when the user explicitly requests it. Generate a `.json` file only if the user asks to export in JSON format.
+1. Analyze ALL provided files together — events JSON, transcript JSON, and any supplementary files
+2. Cross-reference supplementary files with the events and transcript to produce accurate, meaningful insights
+3. Validate that each insight's start/end timestamps actually match what is described in the insight
+4. Create NEW events, modify existing events, or merge events as needed
+5. **Export your results as a downloadable `.json` FILE in the EXACT format specified below - NO VARIATIONS ALLOWED**
+6. Export a JSON file only when the user explicitly requests it. Generate a `.json` file only if the user asks to export in JSON format.
 
 ---
 
@@ -1055,6 +1060,153 @@ The export format is **NOT NEGOTIABLE**. You cannot:
 **The schema below is MANDATORY. Follow it EXACTLY.**
 
 If you deviate from this schema, your export will fail to import and the user's work will be lost.
+
+---
+
+## STEP 0: Read and Index ALL Provided Files First
+
+**Before generating ANY insight, you MUST read and index every file provided.**
+
+### For events JSON:
+- Load each event: record its `id`, `start`, `end`, and any label/type fields
+- Build a lookup table: `event_id → { start, end, label }`
+
+### For transcript JSON:
+- Load each transcript segment: record its `id`, `start`, `end`, and `text`
+- Build a lookup table: `transcript_id → { start, end, text }`
+
+### For supplementary files (lyrics, scripts, stats, commentary, etc.):
+- Read the file completely before using it
+- Identify what the file contains (lyrics, player data, match commentary, etc.)
+- Index key items with any timestamps, cues, or sequence markers if present
+- These files are reference sources — use them to verify and enrich insights, not as the primary time source
+
+**Do NOT generate insights before completing this indexing step.**
+
+---
+
+## STEP 1: Timestamp Validation — MANDATORY FOR EVERY INSIGHT
+
+This is the most critical step. Every insight you generate MUST pass timestamp validation.
+
+### The Core Rule:
+> **The insight text must describe what is ACTUALLY happening in the video at the given start–end window.**
+
+### How to Validate Each Insight:
+
+For every candidate insight, perform these checks in order:
+
+**Check 1 — Identify the source event/transcript entry:**
+- Find the event or transcript segment whose `id` appears in `associatedEventIds`
+- Read its `start` and `end` timestamps
+
+**Check 2 — Confirm timestamp alignment:**
+- The insight's `start` and `end` must fall within or closely match the associated event/transcript segment's time range
+- If the insight claims something happened at T=35s, the associated event must also be around T=35s
+- ❌ WRONG: Insight says "SIX at T=35s" but the associated event is at T=199s
+- ✅ CORRECT: Insight says "SIX at T=35s" and the associated event is also at T=35s
+
+**Check 3 — Confirm the insight text matches the event content:**
+- The label, type, or description of the associated event must support what the insight text claims
+- If the event is labeled "boundary" or "six", the insight should reflect that
+- If the transcript text at that time says something different, flag the conflict
+
+**Check 4 — Cross-reference with supplementary files (if provided):**
+- If a lyrics file is provided and the insight is about a lyric moment, verify the lyric text appears in the transcript near that timestamp
+- If a stats/commentary file is provided and the insight is about a player action, verify the action matches the event at that time
+- Do NOT assign a supplementary file's content to an arbitrary timestamp — find the transcript/event timestamp where it actually matches
+
+**Check 5 — Reject or fix mismatches:**
+- If the insight text does not match the event at the claimed timestamp, do ONE of:
+  a. Find the correct timestamp where that event actually occurs and use that instead
+  b. Replace the insight text with what actually happens at the claimed timestamp
+  c. Remove the segment entirely if no reliable match can be found
+- Never export a segment where the insight text contradicts its own timestamp
+
+### Common Timestamp Mistakes to Catch:
+
+| ❌ Wrong Pattern | ✅ Correct Action |
+|------------------|-----------------|
+| Two events share insight text but have different timestamps | Verify each timestamp independently; each must match its own event |
+| Insight describes "first ball of over" at T=35 but event is at T=199 | Check which timestamp actually has the first ball; fix accordingly |
+| Lyrics insight placed at arbitrary time | Find where transcript text matches that lyric; use that time |
+| Player action insight copied from stats file without time check | Match the action to the event timestamp in the events JSON |
+
+---
+
+## STEP 2: Handling Supplementary Files
+
+When the user provides additional files (lyrics, scripts, match data, etc.), follow these rules:
+
+### Rule 1 — Never assign supplementary content to arbitrary timestamps
+Supplementary files tell you WHAT happened, not WHEN. The WHEN must come from events JSON or transcript JSON.
+
+### Rule 2 — Match supplementary content to transcript/events
+Search the transcript for text that corresponds to the supplementary content:
+- For lyrics: find where the transcript text contains or closely matches the lyric line
+- For match commentary: find the event whose label matches the described action
+- For scripts/dialogue: find the transcript segment where that dialogue occurs
+
+### Rule 3 — Use supplementary files to enrich insight text
+Once you've found the correct timestamp via events/transcript, use the supplementary file to write a richer, more specific insight string.
+
+**Example — Lyrics file provided:**
+
+Lyrics file contains:
+```
+[Verse 1]
+We are the champions, no time for losers
+```
+
+Transcript at T=45.2s–52.8s contains:
+```
+"we are the champions no time for losers"
+```
+
+Event at T=44.8s–53.1s is labeled: "music_segment"
+
+✅ Correct insight:
+```json
+{
+  "insight": "Lyrics: 'We Are The Champions' - Verse 1 begins",
+  "start": 44.8,
+  "end": 53.1,
+  "confidenceScore": 88,
+  "eventMeta": { "associatedEventIds": ["event_id_here"] }
+}
+```
+
+❌ Wrong insight:
+```json
+{
+  "insight": "Lyrics: 'We Are The Champions' - Verse 1 begins",
+  "start": 0,
+  "end": 10,
+  "confidenceScore": 88,
+  "eventMeta": { "associatedEventIds": ["some_unrelated_event_id"] }
+}
+```
+
+### Rule 4 — If no match found, do not fabricate
+If you cannot find a corresponding event or transcript segment for a piece of supplementary content, do NOT create a segment with a guessed timestamp. Either skip it or flag it during the analysis phase (Step 1 of the two-step process).
+
+---
+
+## STEP 3: Generating Insights
+
+After completing Steps 0, 1, and 2, generate insights as follows:
+
+1. **Start with validated events and transcript segments** — only use timestamps from these sources
+2. **Enrich with supplementary file content** — add detail from lyrics, stats, etc. where a match was confirmed
+3. **Write descriptive insight strings** — put all relevant information in the `insight` field since no custom fields are allowed
+4. **Assign confidence scores honestly** — lower the score if the match is uncertain
+
+### Insight Text Guidelines:
+- Be specific: include names, actions, and context
+- For lyrics: include the song section and key lyric phrase
+- For sports events: include player name, action type, and any relevant context from stats
+- For general events: describe what is visually or audibly happening at that moment
+- Do NOT copy-paste from supplementary files without timestamp verification
 
 ---
 
@@ -1092,8 +1244,8 @@ When you export, you MUST follow ALL of these rules:
       "confidenceScore": "float value",
       "eventMeta": {
         "associatedEventIds": [
-          "event/trascript id",
-          "event/trascript id"
+          "event/transcript id",
+          "event/transcript id"
         ]
       }
     }
@@ -1188,6 +1340,39 @@ Here is your export:
 **WHY THIS IS WRONG:**
 - `start`, `end`, and `confidenceScore` are strings instead of numbers
 
+### WRONG Example 5: Mismatched Timestamp and Insight (NEW)
+
+```json
+{
+  "segments": [
+    {
+      "insight": "SIX - Hardik Pandya hits a maximum off the first ball of the over",
+      "start": 35,
+      "end": 45,
+      "confidenceScore": 96,
+      "eventMeta": {
+        "associatedEventIds": ["69b0e885efd325463eeaa622"]
+      }
+    },
+    {
+      "insight": "SIX - Second six of the over by Hardik Pandya",
+      "start": 199,
+      "end": 207,
+      "confidenceScore": 96,
+      "eventMeta": {
+        "associatedEventIds": ["69b0e885efd325463eeaa623"]
+      }
+    }
+  ]
+}
+```
+
+**WHY THIS IS WRONG:**
+- The event `69b0e885efd325463eeaa622` may actually occur at T=199s, not T=35s
+- The insight text was written without checking whether the described action
+  (first six of the over) actually happens at T=35s in the video
+- Always verify: does the associated event's timestamp match the insight's start/end?
+
 ---
 
 ## ✅ CORRECT - Valid Export Example
@@ -1232,12 +1417,19 @@ The file `/mnt/user-data/outputs/sdna_export.json` should contain:
 - No extra fields added
 - Numbers are numbers (not strings)
 - File contains pure JSON only
+- Timestamps have been verified against associated event IDs
 
 ---
 
 ## Schema Validation Checklist
 
 Before exporting, verify EVERY item on this checklist:
+
+### Timestamp Accuracy (NEW - Check This First)
+- [ ] Every insight's start/end matches the timestamp of its associated event/transcript entry
+- [ ] The insight text describes what actually happens at that timestamp in the video
+- [ ] For supplementary file content (lyrics, stats, etc.), the timestamp was derived from transcript/events — NOT assumed
+- [ ] No two segments have swapped or confused timestamps
 
 ### Structure
 - [ ] Root object has ONLY 1 field: `segments`
@@ -1275,11 +1467,15 @@ Before exporting, verify EVERY item on this checklist:
 
 ### Step 1: Analysis & Discussion (Natural Conversation)
 
-First, analyze the content and discuss findings with the user naturally.
+First, analyze ALL provided files and discuss findings with the user naturally.
 
 **During this phase:**
+- Read and index every provided file (events, transcript, and all supplementary files)
+- Validate each candidate insight's timestamp against its associated event/transcript entry
+- Cross-reference supplementary files (lyrics, stats, etc.) against transcript/events to find correct timestamps
 - Answer questions conversationally
 - Explain what you discovered
+- Flag any timestamp mismatches or unverifiable content
 - Ask clarifying questions if needed
 - Iterate and refine your analysis
 - Use readable formats (lists, tables, prose)
@@ -1312,6 +1508,9 @@ When the user explicitly requests export with phrases like:
 6. **String numbers** — Don't quote numeric values
 7. **Mixed content** — Don't combine JSON with explanatory text inside the file
 8. **Forgetting `present_files`** — Always call `present_files` after writing the file
+9. **Unverified timestamps** — Never write an insight without confirming its start/end matches the associated event (NEW)
+10. **Supplementary content at guessed timestamps** — Never place lyrics, stats, or script content at a timestamp that wasn't confirmed via events/transcript JSON (NEW)
+11. **Copying insight text across events** — Don't reuse the same insight description for two different events without independently verifying each one (NEW)
 
 ---
 
@@ -1319,11 +1518,14 @@ When the user explicitly requests export with phrases like:
 
 **When in doubt, ask yourself:**
 
-1. "Have I written the output to a `.json` file (not pasted it as text)?"
-2. "Did I call `present_files` so the user can download it?"
-3. "Does my file content match the CORRECT example exactly in structure?"
-4. "Have I added ANY fields not in the schema?"
-5. "Are ALL my field names exactly as specified?"
+1. "Have I read ALL provided files, including supplementary ones?"
+2. "For this insight, have I verified that the start/end timestamps match the actual associated event?"
+3. "If this insight uses supplementary file content (lyrics, stats, etc.), did I find the timestamp from the transcript or events JSON — not from the supplementary file itself?"
+4. "Have I written the output to a `.json` file (not pasted it as text)?"
+5. "Did I call `present_files` so the user can download it?"
+6. "Does my file content match the CORRECT example exactly in structure?"
+7. "Have I added ANY fields not in the schema?"
+8. "Are ALL my field names exactly as specified?"
 
 **If the answer to ANY of these is "no" or "I'm not sure" — STOP and fix it.**
 
@@ -1333,11 +1535,15 @@ When the user explicitly requests export with phrases like:
 
 When analyzing the provided files during Step 1:
 
-1. **Cross-reference events with transcript**: Provides context for timing
-2. **Look for patterns**: Similar events clustered together may indicate themes
-3. **Consider confidence scores**: Higher scores (>80) are more reliable
-4. **Temporal alignment**: Events at the same time may be related
-5. **Create meaningful insight text**: Put all relevant info in the insight string since you cannot add custom fields
+1. **Index before you analyze**: Build a full lookup of all event and transcript IDs with their timestamps before generating any insight
+2. **Cross-reference events with transcript**: Provides context for timing
+3. **Use supplementary files as a map, not a clock**: Lyrics, stats, and scripts tell you WHAT — the events/transcript tells you WHEN
+4. **Verify every timestamp independently**: Even if two insights seem similar, check each one's timestamp against its own associated event
+5. **Look for patterns**: Similar events clustered together may indicate themes
+6. **Consider confidence scores**: Higher scores (>80) are more reliable; lower your confidence score if timestamp matching was approximate
+7. **Temporal alignment**: Events at the same time may be related
+8. **Create meaningful insight text**: Put all relevant info in the insight string since you cannot add custom fields
+9. **Flag mismatches during discussion**: If you find a timestamp mismatch during analysis, tell the user before exporting so they can decide how to handle it
 
 **Remember**: All your analysis insights must fit into the `insight` field as a descriptive string. You cannot add additional fields to store structured data.
 
@@ -1347,7 +1553,9 @@ When analyzing the provided files during Step 1:
 
 **The export schema is not a suggestion — it is a requirement.**
 
-Your output will be parsed by automated systems that expect this exact structure. Any deviation will cause import failures and data loss.
+**Timestamp accuracy is not optional — it is a correctness requirement.**
+
+Your output will be parsed by automated systems that expect this exact structure AND by users who expect the insights to reflect what actually happens in the video at the stated times. Any deviation in schema will cause import failures. Any deviation in timestamp accuracy will produce misleading data.
 
 When you're ready to export:
 1. Write the JSON to `/mnt/user-data/outputs/sdna_export.json`

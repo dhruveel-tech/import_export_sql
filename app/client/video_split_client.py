@@ -175,7 +175,7 @@ class VideoSplitClient:
             crf,
             preset,
         )
-
+        
     def _resize_video_sync(
         self,
         video_filepath: str,
@@ -206,37 +206,86 @@ class VideoSplitClient:
 
         vf_filter = f"crop={crop_width}:ih:{x_offset}:0"
 
+        # ── Detect best available hardware encoder ──────────────────────────
+        def _pick_encoder():
+            """Returns (encoder, extra_flags) based on what's available."""
+            candidates = [
+                # NVIDIA
+                ("h264_nvenc",  ["-preset", "p2", "-rc", "vbr", "-cq", str(crf)]),
+                # Apple Silicon / macOS
+                ("h264_videotoolbox", ["-q:v", "50"]),
+                # Intel QSV
+                ("h264_qsv",    ["-global_quality", str(crf), "-preset", "veryfast"]),
+                # AMD AMF
+                ("h264_amf",    ["-quality", "speed", "-rc", "cqp", "-qp_i", str(crf)]),
+                # VA-API (Linux GPU)
+                ("h264_vaapi",  ["-qp", str(crf)]),
+            ]
+            for enc, flags in candidates:
+                probe = subprocess.run(
+                    ["ffmpeg", "-hide_banner", "-encoders"],
+                    capture_output=True, text=True
+                )
+                if enc in probe.stdout:
+                    test = subprocess.run(
+                        ["ffmpeg", "-y", "-f", "lavfi", "-i", "nullsrc=s=128x128:d=0.1",
+                        "-c:v", enc, "-f", "null", "-"],
+                        capture_output=True
+                    )
+                    if test.returncode == 0:
+                        return enc, flags
+                    
+            return "libx264", ["-preset", "ultrafast", "-tune", "zerolatency", "-crf", str(crf)]
+
+        encoder, enc_flags = _pick_encoder()
+
+        # ── Build FFmpeg command ─────────────────────────────────────────────
         ffmpeg_cmd = [
-            "ffmpeg",
-            "-y",
-            "-threads", "0",
+            "ffmpeg", "-y",
+            "-threads", "0",     
         ]
 
+        # Seek BEFORE -i (input seeking) — much faster for large files
         if start_time is not None and end_time is not None:
             duration = end_time - start_time
             ffmpeg_cmd.extend(["-ss", str(start_time), "-t", str(duration)])
 
         ffmpeg_cmd.extend(["-i", str(video_path)])
 
+        # For VAAPI we need an extra hwupload filter
+        if encoder == "h264_vaapi":
+            vf_filter_full = f"{vf_filter},format=nv12,hwupload"
+        else:
+            vf_filter_full = vf_filter
+
         ffmpeg_cmd.extend([
-            "-vf", vf_filter,
-            "-c:v", video_codec,
-            "-preset", preset,
-            "-crf", str(crf),
-            "-tune", "fastdecode",
-            "-c:a", audio_codec,
+            "-vf", vf_filter_full,
+            "-c:v", encoder,
+            *enc_flags,
+            "-c:a", "copy" if audio_codec == "copy" else audio_codec,
+            "-movflags", "+faststart",   
             str(output_file),
         ])
-
         try:
-            subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+            result = subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
             return output_file
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr.decode() if e.stderr else str(e)
             logger.error(
-                f"FFmpeg failed: input={video_filepath}, output={output_file}, error={error_msg}"
+                f"FFmpeg failed (encoder={encoder}): input={video_filepath}, "
+                f"output={output_file}, error={error_msg}"
             )
+            # ── Auto-fallback to CPU if hardware encoder failed mid-encode ──
+            if encoder != "libx264":
+                logger.warning("Hardware encode failed — retrying with libx264 ultrafast")
+                return self._resize_video_sync(
+                    video_filepath, output_path, width, height,
+                    start_time, end_time, position,
+                    video_codec="libx264", audio_codec=audio_codec,
+                    crf=crf, preset="ultrafast",
+                )
             return None
+    
     # -----------------------------------------------------------------------
     # generate_output_filename  (pure logic, stays sync)
     # -----------------------------------------------------------------------
