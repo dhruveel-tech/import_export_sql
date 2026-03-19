@@ -352,9 +352,12 @@ async def process_video_split_task(split_job_id: str):
         individual_segments= work_order.get("outputs", {}).get("individual_segments", {}).get("is_enabled", False)
         merge_segments     = work_order.get("outputs", {}).get("merge_segments",     {}).get("is_enabled", False)
         custom_segments    = work_order.get("outputs", {}).get("custom_segments",    {}).get("is_enabled", False)
- 
+
         event_ids    = work_order.get("inputs", {}).get("event_ids", [])
         segment_data = await video_service.get_segment_data(event_ids, job.repo_guid) if event_ids else {}
+                
+        # inputs    = work_order.get("inputs", {})
+        # segment_data = await video_service.get_segment_data(inputs, job.repo_guid) if inputs else {}
         segments     = segment_data.get("segments", []) if segment_data else []
  
         clip_duration = (

@@ -17,10 +17,18 @@ from pydantic import BaseModel, Field
 # Input / work-order schemas
 # ---------------------------------------------------------------------------
 
+# class ExportAllData(BaseModel):
+#     is_all_transcript: bool = False
+#     is_all_events: bool = False
+#     is_all_insights: bool = False
+#     exclude_list: Optional[List[str]] = Field(default_factory=list)
+    
 class ExportVideoInputs(BaseModel):
     """Export input data selection."""
     event_ids: List[str] = Field(default_factory=list)
+    # is_all: Optional[ExportAllData] = None 
     video_path: str = Field(..., min_length=1, description="Absolute path of source video")
+    # source_path: str = Field(..., min_length=1, description="Absolute path of source video") 
 
 
 class ResizeVideoConfig(BaseModel):
@@ -29,19 +37,17 @@ class ResizeVideoConfig(BaseModel):
     height: Optional[int] = 0
     position: Optional[str] = "center"
 
-
 class FeatureToggle(BaseModel):
     is_enabled: bool = False
-    is_resize_enabled: Optional[ResizeVideoConfig] = {}
+    is_resize_enabled: Optional[ResizeVideoConfig] = Field(default_factory=ResizeVideoConfig)
     duration_threshold: Optional[float] = 0
 
 
 class ExportVideoOutputs(BaseModel):
-    """Export output configuration."""
-    full_video:          Optional[FeatureToggle] = {}
-    individual_segments: Optional[FeatureToggle] = {}
-    merge_segments:      Optional[FeatureToggle] = {}
-    custom_segments:     Optional[FeatureToggle] = {}
+    full_video: Optional[FeatureToggle] = Field(default_factory=FeatureToggle)
+    individual_segments: Optional[FeatureToggle] = Field(default_factory=FeatureToggle)
+    merge_segments: Optional[FeatureToggle] = Field(default_factory=FeatureToggle)
+    custom_segments: Optional[FeatureToggle] = Field(default_factory=FeatureToggle)
 
 
 class VideoSplitWorkOrderCreate(BaseModel):
