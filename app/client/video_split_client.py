@@ -331,7 +331,6 @@ class VideoSplitClient:
         progress_duration = op_duration if op_duration else total_duration
  
         try:
-            logger.info(f"ffmpeg command :- {' '.join(ffmpeg_cmd)}")
             _run_ffmpeg_with_progress(ffmpeg_cmd, progress_duration, progress_callback)
             return output_file
         except subprocess.CalledProcessError as e:
@@ -352,6 +351,46 @@ class VideoSplitClient:
                 )
             return None
 
+    async def concat_clips(
+        self,
+        concat_list_path: Path,
+        output_path: str,
+        total_duration: float,
+        progress_callback=None,
+    ) -> Path:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            self._concat_clips_sync,
+            concat_list_path, output_path, total_duration, progress_callback,
+        )
+
+    def _concat_clips_sync(
+        self,
+        concat_list_path: Path,
+        output_path: str,
+        total_duration: float,
+        progress_callback=None,
+    ) -> Path:
+        output_file = Path(output_path)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        concat_cmd = [
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0",
+            "-i", str(concat_list_path),
+            "-c", "copy",
+            str(output_file),
+        ]
+
+        try:
+            _run_ffmpeg_with_progress(concat_cmd, total_duration, progress_callback)
+            return output_file
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.decode() if e.stderr else str(e)
+            logger.error(f"FFmpeg concat failed: output={output_file}, error={error_msg}")
+            return None
+    
     # -----------------------------------------------------------------------
     # generate_output_filename  (pure logic)
     # -----------------------------------------------------------------------

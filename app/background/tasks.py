@@ -15,6 +15,7 @@ from datetime import datetime
 import zipfile
 from fastapi.responses import JSONResponse
 from app.services.export_service import ExportService
+from app.core.ffmpeg_progress import _run_ffmpeg_with_progress
 from sqlalchemy import select
 from app.core.progress_tracker import progress_tracker   
 from app.db.session import AsyncSessionLocal, init_db
@@ -528,53 +529,132 @@ async def process_video_split_task(split_job_id: str):
             if not (merge_segments and segments):
                 return
             try:
+                log_printed = False
                 segments_processed += 1
                 resize_merge_video = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("is_enabled", False)
                 position = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("position", "center")
                 resize_path = result_path = height = width = None
- 
+
+                # ── 1. Extract each segment to a temp clip ───────────────────────────
+                temp_clips = []
+                temp_dir = output_folder / "Merge_Video" / "_temp_clips"
+                temp_dir.mkdir(parents=True, exist_ok=True)
+
+                for idx, seg in enumerate(segments):
+                    op_label = f"Segment {idx + 1}/{len(segments)}"
+                    actual_start, actual_end, duration = video_service.calculate_segment_times(
+                        seg["start"], seg["end"], job.handle_seconds, total_duration
+                    )
+                    if resize_merge_video:
+                        if not log_printed:
+                            logger.info("Resizing merge segments...")
+                            log_printed = True
+                        height = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("height", 16)
+                        width  = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("width", 9)
+                        temp_output = temp_dir / f"clip_{idx:03d}_resized.mp4"
+                        await video_service.resize_video(
+                            video_filepath=job.video_file_path,
+                            output_path=str(temp_output),
+                            width=width,
+                            height=height,
+                            position=position,
+                            start_time=actual_start,
+                            end_time=actual_end,
+                            video_codec="copy",
+                            audio_codec="aac",
+                            crf=23,
+                            preset="medium",
+                            progress_callback=make_callback("merge_segments", f"Extracting clip {idx+1}/{len(segments)}"),
+                            total_duration=total_duration,
+                        )
+                    else:
+                        if not log_printed:
+                            logger.info("Exporting merger segments...")
+                            log_printed = True
+                        temp_output = temp_dir / f"clip_{idx:03d}.mp4"
+                        await video_service.split_video_segment(
+                            job.video_file_path, actual_start, actual_end,
+                            str(temp_output),
+                            encoding="copy",   # must re-encode so concat works frame-accurately
+                            progress_callback=make_callback("merge_segments", f"Extracting clip {idx+1}/{len(segments)}"),
+                        )
+                
+                        
+                    if temp_output.exists():
+                        temp_clips.append(temp_output)
+
+                if not temp_clips:
+                    raise RuntimeError("No temp clips were created for merge")
+
+                # ── 2. Build ffmpeg concat list file ─────────────────────────────────
+                concat_list_path = temp_dir / "concat_list.txt"
+                with open(concat_list_path, "w") as f:
+                    for clip in temp_clips:
+                        f.write(f"file '{clip.resolve()}'\n")
+
+                # ── 3. Concatenate all clips into final output ────────────────────────
                 min_start = min(seg["start"] for seg in segments)
                 max_end   = max(seg["end"]   for seg in segments)
-                actual_start, actual_end, duration = video_service.calculate_segment_times(
-                    min_start, max_end, job.handle_seconds, total_duration
+                total_merged_duration = sum(
+                    video_service.calculate_segment_times(seg["start"], seg["end"], job.handle_seconds, total_duration)[2]
+                    for seg in segments
                 )
- 
+                logger.info(f"Calculated merged segment times: min_start={min_start}, max_end={max_end}, total_merged_duration={total_merged_duration}")
                 if resize_merge_video:
-                    height = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("height", 16)
-                    width  = work_order.get("outputs", {}).get("merge_segments", {}).get("is_resize_enabled", {}).get("width", 9)
-                    progress_tracker.update_section(split_job_id, "merge_segments", label=f"Resizing merged video ({height}x{width})")
-                    resize_path, output_filename = await resize_video_task(
-                        video_service, video_path, output_folder, height, width,
-                        total_duration, resized_op_folder="Resized_Merge_Video",
-                        start_time=actual_start, end_time=actual_end, position=position,
-                        progress_callback=make_callback("merge_segments", f"Resizing merged video ({height}x{width})"),
+                    output_filename = video_service.generate_output_filename(
+                        video_path, min_start, max_end, f"resized_{height}x{width}_merged", 0
                     )
+                    final_output = output_folder / "Resized_Merge_Video" / output_filename
                 else:
-                    logger.info("Exporting merged video...")
-                    output_filename = video_service.generate_output_filename(video_path, actual_start, actual_end, "merged", 0)
-                    output_path = output_folder / "Merge_Video" / output_filename
-                    progress_tracker.update_section(split_job_id, "merge_segments", label="Exporting merged video", current_file=output_filename)
-                    result_path = await video_service.split_video_segment(
-                        job.video_file_path, actual_start, actual_end, str(output_path),
-                        encoding=job.encoding,
-                        progress_callback=make_callback("merge_segments", "Exporting merged video", output_filename),
+                    output_filename = video_service.generate_output_filename(
+                        video_path, min_start, max_end, "merged", 0
                     )
- 
+                    final_output = output_folder / "Merge_Video" / output_filename
+
+                final_output.parent.mkdir(parents=True, exist_ok=True)
+
+                progress_tracker.update_section(split_job_id, "merge_segments", label="Concatenating clips", current_file=output_filename)
+
+                final_path = await video_service.concat_clips(
+                    concat_list_path=concat_list_path,
+                    output_path=str(final_output),
+                    total_duration=total_merged_duration,
+                    progress_callback=make_callback("merge_segments", "Concatenating clips", output_filename),
+                )
+
+                # ── 4. Cleanup temp clips ─────────────────────────────────────────────
+                for clip in temp_clips:
+                    clip.unlink(missing_ok=True)
+                concat_list_path.unlink(missing_ok=True)
+                try:
+                    temp_dir.rmdir()   # only removes if empty
+                except OSError:
+                    pass
+
+                # ── 5. Record result ──────────────────────────────────────────────────
                 progress_tracker.complete_section_op(split_job_id, "merge_segments")
-                final_path = result_path if result_path else resize_path
-                artifacts.append(_create_artifact_record(final_path, "resized_merge_video" if resize_merge_video else "merge_video", "mp4", split_job_id))
+                final_path = final_output
+
+                artifacts.append(_create_artifact_record(
+                    final_path,
+                    "resized_merge_video" if resize_merge_video else "merge_video",
+                    "mp4", split_job_id
+                ))
                 results.append(generate_result_for_video_split(
-                    0, f"resized_{height}x{width}" if resize_merge_video else "merge_video",
+                    0,
+                    f"resized_{height}x{width}_merged" if resize_merge_video else "merge_video",
                     round(min_start, 2), round(max_end, 2),
-                    round(actual_start, 2), round(actual_end, 2), round(duration, 2),
+                    round(min_start, 2), round(max_end, 2),
+                    round(total_merged_duration, 2),
                     output_filename, final_path, final_path.stat().st_size, "success", None,
                 ))
                 segments_successful += 1
-                logger.info(f"Merged segment created : split_job_id={split_job_id}")
+                logger.info(f"Merged segment created: split_job_id={split_job_id}")
+
             except Exception as e:
                 segments_failed += 1
                 progress_tracker.fail_section(split_job_id, "merge_segments")
-                logger.error(f"Merge segments failed : error={str(e)}")
+                logger.error(f"Merge segments failed: error={str(e)}")
  
         async def run_custom_segments():
             nonlocal segments_processed, segments_successful, segments_failed
@@ -866,19 +946,19 @@ def _create_zip_from_folder(export_id: UUID, zip_base_folder_path: str) -> str:
                 zipf.write(file_path, file_path.relative_to(export_folder))
     
     # ---- Remove all original files and subfolders, keep only zip ----
-    for item in export_folder.iterdir():
-        if item == zip_path:
-            continue  
-        if item.is_dir():
-            shutil.rmtree(item)   # remove subfolder and all its contents
-        elif item.is_file():
-            item.unlink()         # remove individual file
+    #for item in export_folder.iterdir():
+    #    if item == zip_path:
+    #        continue  
+    #    if item.is_dir():
+    #        shutil.rmtree(item)   # remove subfolder and all its contents
+    #    elif item.is_file():
+    #        item.unlink()         # remove individual file
     # -----------------------------------------------------------------
     
-    # zip_file_path = str(zip_path)
-    # main_zip_path = zip_path.relative_to("/mnt/AI-Shared-Drive-Demo")
+    zip_file_path = str(zip_path)
+    main_zip_path = zip_path.relative_to("/mnt/AI-Shared-Drive-Demo")
 
-    return str(zip_path)
+    return str(main_zip_path)
     
 
 def _create_selects_from_comments_markers(comments):
